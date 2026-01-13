@@ -1,0 +1,255 @@
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* AG Grid styles removed */
+
+:root {
+  --foreground-rgb: 0, 0, 0;
+  --background-start-rgb: 214, 219, 220;
+  --background-end-rgb: 255, 255, 255;
+}
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: 221.2 83.2% 53.3%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 221.2 83.2% 53.3%;
+    --radius: 0.5rem;
+  }
+ 
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 217.2 91.2% 59.8%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 224.3 76.3% 48%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    margin: 0;
+    padding: 0;
+    overflow-x: hidden;
+  }
+  html {
+    overflow-x: hidden;
+  }
+} 
+
+/* AG Grid overrides moved to src/styles/ag-grid.css */
+
+/* Profile Card 3D 효과 */
+.profile-card {
+  transform-style: preserve-3d;
+  transition: all 0.5s cubic-bezier(0.23, 1, 0.320, 1);
+  will-change: transform;
+}
+
+.profile-card:hover {
+  transform: perspective(1000px) rotateX(15deg) rotateY(15deg) scale3d(1.1, 1.1, 1.1) translateZ(20px);
+  box-shadow: 
+    0 30px 80px rgba(0, 0, 0, 0.3),
+    0 15px 35px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3),
+    0 0 50px rgba(59, 130, 246, 0.4),
+    0 0 100px rgba(59, 130, 246, 0.2);
+}
+
+/* 각 카드별 색상별 빛나는 효과 */
+.profile-card.blue-glow:hover {
+  box-shadow: 
+    0 30px 80px rgba(0, 0, 0, 0.3),
+    0 15px 35px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3),
+    0 0 50px rgba(59, 130, 246, 0.6),
+    0 0 100px rgba(59, 130, 246, 0.3),
+    0 0 150px rgba(59, 130, 246, 0.1);
+}
+
+.profile-card.green-glow:hover {
+  box-shadow: 
+    0 30px 80px rgba(0, 0, 0, 0.3),
+    0 15px 35px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3),
+    0 0 50px rgba(34, 197, 94, 0.6),
+    0 0 100px rgba(34, 197, 94, 0.3),
+    0 0 150px rgba(34, 197, 94, 0.1);
+}
+
+.profile-card.purple-glow:hover {
+  box-shadow: 
+    0 30px 80px rgba(0, 0, 0, 0.3),
+    0 15px 35px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3),
+    0 0 50px rgba(147, 51, 234, 0.6),
+    0 0 100px rgba(147, 51, 234, 0.3),
+    0 0 150px rgba(147, 51, 234, 0.1);
+}
+
+.profile-card-inner {
+  transform-style: preserve-3d;
+  transition: transform 0.5s cubic-bezier(0.23, 1, 0.320, 1);
+}
+
+/* 강제 3D 가속 */
+.profile-card * {
+  transform-style: preserve-3d;
+}
+
+/* 빛나는 애니메이션 */
+@keyframes glow-pulse {
+  0%, 100% {
+    box-shadow: 
+      0 30px 80px rgba(0, 0, 0, 0.3),
+      0 15px 35px rgba(0, 0, 0, 0.2),
+      inset 0 1px 0 rgba(255, 255, 255, 0.3),
+      0 0 50px rgba(59, 130, 246, 0.6),
+      0 0 100px rgba(59, 130, 246, 0.3),
+      0 0 150px rgba(59, 130, 246, 0.1);
+  }
+  50% {
+    box-shadow: 
+      0 30px 80px rgba(0, 0, 0, 0.3),
+      0 15px 35px rgba(0, 0, 0, 0.2),
+      inset 0 1px 0 rgba(255, 255, 255, 0.3),
+      0 0 60px rgba(59, 130, 246, 0.8),
+      0 0 120px rgba(59, 130, 246, 0.5),
+      0 0 180px rgba(59, 130, 246, 0.2);
+  }
+}
+
+@keyframes glow-pulse-green {
+  0%, 100% {
+    box-shadow: 
+      0 30px 80px rgba(0, 0, 0, 0.3),
+      0 15px 35px rgba(0, 0, 0, 0.2),
+      inset 0 1px 0 rgba(255, 255, 255, 0.3),
+      0 0 50px rgba(34, 197, 94, 0.6),
+      0 0 100px rgba(34, 197, 94, 0.3),
+      0 0 150px rgba(34, 197, 94, 0.1);
+  }
+  50% {
+    box-shadow: 
+      0 30px 80px rgba(0, 0, 0, 0.3),
+      0 15px 35px rgba(0, 0, 0, 0.2),
+      inset 0 1px 0 rgba(255, 255, 255, 0.3),
+      0 0 60px rgba(34, 197, 94, 0.8),
+      0 0 120px rgba(34, 197, 94, 0.5),
+      0 0 180px rgba(34, 197, 94, 0.2);
+  }
+}
+
+@keyframes glow-pulse-purple {
+  0%, 100% {
+    box-shadow: 
+      0 30px 80px rgba(0, 0, 0, 0.3),
+      0 15px 35px rgba(0, 0, 0, 0.2),
+      inset 0 1px 0 rgba(255, 255, 255, 0.3),
+      0 0 50px rgba(147, 51, 234, 0.6),
+      0 0 100px rgba(147, 51, 234, 0.3),
+      0 0 150px rgba(147, 51, 234, 0.1);
+  }
+  50% {
+    box-shadow: 
+      0 30px 80px rgba(0, 0, 0, 0.3),
+      0 15px 35px rgba(0, 0, 0, 0.2),
+      inset 0 1px 0 rgba(255, 255, 255, 0.3),
+      0 0 60px rgba(147, 51, 234, 0.8),
+      0 0 120px rgba(147, 51, 234, 0.5),
+      0 0 180px rgba(147, 51, 234, 0.2);
+  }
+}
+
+@keyframes glow-pulse-orange {
+  0%, 100% {
+    box-shadow: 
+      0 30px 80px rgba(0, 0, 0, 0.3),
+      0 15px 35px rgba(0, 0, 0, 0.2),
+      inset 0 1px 0 rgba(255, 255, 255, 0.3),
+      0 0 50px rgba(249, 115, 22, 0.6),
+      0 0 100px rgba(249, 115, 22, 0.3),
+      0 0 150px rgba(249, 115, 22, 0.1);
+  }
+  50% {
+    box-shadow: 
+      0 30px 80px rgba(0, 0, 0, 0.3),
+      0 15px 35px rgba(0, 0, 0, 0.2),
+      inset 0 1px 0 rgba(255, 255, 255, 0.3),
+      0 0 60px rgba(249, 115, 22, 0.8),
+      0 0 120px rgba(249, 115, 22, 0.5),
+      0 0 180px rgba(249, 115, 22, 0.2);
+  }
+}
+
+/* 호버 시 펄스 애니메이션 적용 */
+.profile-card.blue-glow:hover {
+  animation: glow-pulse 2s ease-in-out infinite;
+}
+
+.profile-card.green-glow:hover {
+  animation: glow-pulse-green 2s ease-in-out infinite;
+}
+
+.profile-card.purple-glow:hover {
+  animation: glow-pulse-purple 2s ease-in-out infinite;
+}
+
+.profile-card.orange-glow:hover {
+  animation: glow-pulse-orange 2s ease-in-out infinite;
+}
+
+/* 미묘한 패턴 배경 애니메이션 */
+@keyframes pattern-shift {
+  0% {
+    background-position: 0% 0%, 0% 0%;
+  }
+  25% {
+    background-position: 25% 25%, 15% 15%;
+  }
+  50% {
+    background-position: 50% 50%, 30% 30%;
+  }
+  75% {
+    background-position: 75% 75%, 45% 45%;
+  }
+  100% {
+    background-position: 100% 100%, 60% 60%;
+  }
+}

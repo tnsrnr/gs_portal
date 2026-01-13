@@ -1,0 +1,90 @@
+/* 다크 테마 (기본) */
+:root {
+  /* 배경 색상 */
+  --bg-primary: linear-gradient(135deg, #1e3a8a 0%, #1e293b 50%, #0f172a 100%);
+  --bg-secondary: rgba(255, 255, 255, 0.1);
+  --bg-tertiary: rgba(255, 255, 255, 0.05);
+  --bg-card: rgba(255, 255, 255, 0.1);
+  --bg-card-hover: rgba(255, 255, 255, 0.2);
+  --bg-dropdown: rgba(30, 58, 138, 0.95);
+  
+  /* 텍스트 색상 */
+  --text-primary: #ffffff;
+  --text-secondary: #e2e8f0;
+  --text-tertiary: #94a3b8;
+  --text-muted: #64748b;
+  --text-dropdown: #ffffff;
+  --text-dropdown-secondary: #e2e8f0;
+  
+  /* 보더 색상 */
+  --border-primary: rgba(255, 255, 255, 0.2);
+  --border-secondary: rgba(255, 255, 255, 0.1);
+  --border-focus: #3b82f6;
+  
+  /* 액센트 색상 */
+  --accent-blue: #3b82f6;
+  --accent-green: #10b981;
+  --accent-purple: #8b5cf6;
+  --accent-orange: #f59e0b;
+  --accent-red: #ef4444;
+  
+  /* 그림자 */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+}
+
+/* 라이트 테마 */
+[data-theme="light"] {
+  /* 배경 색상 */
+  --bg-primary: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 50%, #cbd5e1 100%);
+  --bg-secondary: rgba(255, 255, 255, 0.8);
+  --bg-tertiary: rgba(255, 255, 255, 0.6);
+  --bg-card: rgba(255, 255, 255, 0.9);
+  --bg-card-hover: rgba(255, 255, 255, 1);
+  --bg-dropdown: rgba(255, 255, 255, 1);
+  
+  /* 텍스트 색상 */
+  --text-primary: #1e293b;
+  --text-secondary: #334155;
+  --text-tertiary: #64748b;
+  --text-muted: #94a3b8;
+  --text-dropdown: #1e293b;
+  --text-dropdown-secondary: #475569;
+  
+  /* 보더 색상 */
+  --border-primary: rgba(0, 0, 0, 0.1);
+  --border-secondary: rgba(0, 0, 0, 0.05);
+  --border-focus: #3b82f6;
+  
+  /* 액센트 색상 (라이트 테마에서도 동일) */
+  --accent-blue: #3b82f6;
+  --accent-green: #10b981;
+  --accent-purple: #8b5cf6;
+  --accent-orange: #f59e0b;
+  --accent-red: #ef4444;
+  
+  /* 그림자 (라이트 테마용) */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+}
+
+/* 테마 전환 애니메이션 */
+* {
+  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+}
+
+/* 다크 테마 전용 스타일 */
+.dark-theme {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+}
+
+/* 라이트 테마 전용 스타일 */
+.light-theme {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+}
