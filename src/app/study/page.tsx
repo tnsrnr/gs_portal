@@ -24,11 +24,15 @@ export default function StudyPage() {
   const router = useRouter();
   const [topics, setTopics] = useState<TopicData[]>([]);
   const [currentIndex, setCurrentIndex] = useState<number>(0);
-  const [showDefinition, setShowDefinition] = useState<boolean>(false);
   const [showCheatsheet, setShowCheatsheet] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(false);
   const [studyMode, setStudyMode] = useState<'random' | 'sequential'>('random');
+  const [studyPattern, setStudyPattern] = useState<'full' | 'select_definition' | 'find_topic'>('full');
   const [studiedTopics, setStudiedTopics] = useState<Set<number>>(new Set());
+  const [choiceCount, setChoiceCount] = useState<number>(3); // 선택지 개수 (2, 3, 5)
+  const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
+  const [showAnswer, setShowAnswer] = useState<boolean>(false);
+  const [choiceOptions, setChoiceOptions] = useState<TopicData[]>([]);
 
   useEffect(() => {
     fetchTopics();
@@ -65,34 +69,72 @@ export default function StudyPage() {
     return topics[currentIndex];
   };
 
+  // 선택지 생성 (패턴 2, 3용)
+  const generateChoices = (correctTopic: TopicData) => {
+    if (studyPattern === 'select_definition') {
+      // 정의 선택: 정답 1개 + 오답 (choiceCount - 1)개
+      const wrongTopics = topics
+        .filter(t => t.id !== correctTopic.id && t.definition)
+        .sort(() => Math.random() - 0.5)
+        .slice(0, choiceCount - 1);
+      const allChoices = [correctTopic, ...wrongTopics].sort(() => Math.random() - 0.5);
+      setChoiceOptions(allChoices);
+    } else if (studyPattern === 'find_topic') {
+      // 토픽명 찾기: 정답 1개 + 오답 (choiceCount - 1)개
+      const wrongTopics = topics
+        .filter(t => t.id !== correctTopic.id && t.topic)
+        .sort(() => Math.random() - 0.5)
+        .slice(0, choiceCount - 1);
+      const allChoices = [correctTopic, ...wrongTopics].sort(() => Math.random() - 0.5);
+      setChoiceOptions(allChoices);
+    }
+    setSelectedAnswer(null);
+    setShowAnswer(false);
+  };
+
+  useEffect(() => {
+    const topic = getCurrentTopic();
+    if (topic && topics.length > 0 && (studyPattern === 'select_definition' || studyPattern === 'find_topic')) {
+      generateChoices(topic);
+    }
+  }, [currentIndex, studyMode, studyPattern, choiceCount, topics.length, studiedTopics]);
+
   const handleNext = () => {
     if (studyMode === 'random') {
       const current = getCurrentTopic();
       if (current) {
         setStudiedTopics(prev => new Set([...prev, current.id]));
       }
-      setShowDefinition(false);
       setShowCheatsheet(false);
     } else {
       setCurrentIndex(prev => (prev + 1) % topics.length);
-      setShowDefinition(false);
       setShowCheatsheet(false);
     }
+    setSelectedAnswer(null);
+    setShowAnswer(false);
   };
 
   const handlePrev = () => {
     if (studyMode === 'sequential') {
       setCurrentIndex(prev => (prev - 1 + topics.length) % topics.length);
-      setShowDefinition(false);
       setShowCheatsheet(false);
     }
+    setSelectedAnswer(null);
+    setShowAnswer(false);
   };
 
   const handleReset = () => {
     setCurrentIndex(0);
     setStudiedTopics(new Set());
-    setShowDefinition(false);
     setShowCheatsheet(false);
+    setSelectedAnswer(null);
+    setShowAnswer(false);
+  };
+
+  const handleChoiceSelect = (index: number) => {
+    if (showAnswer) return;
+    setSelectedAnswer(index);
+    setShowAnswer(true);
   };
 
   const currentTopic = getCurrentTopic();
@@ -179,34 +221,100 @@ export default function StudyPage() {
               </p>
             </div>
 
-            {/* 학습 모드 선택 */}
-            <div className="flex gap-1">
-              <button
-                onClick={() => {
-                  setStudyMode('random');
-                  handleReset();
-                }}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  studyMode === 'random' 
-                    ? 'bg-purple-600 text-white' 
-                    : theme === 'dark' ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
-                }`}
-              >
-                랜덤
-              </button>
-              <button
-                onClick={() => {
-                  setStudyMode('sequential');
-                  handleReset();
-                }}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  studyMode === 'sequential' 
-                    ? 'bg-purple-600 text-white' 
-                    : theme === 'dark' ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
-                }`}
-              >
-                순차
-              </button>
+            {/* 학습 패턴 선택 */}
+            <div className="flex flex-col gap-2">
+              <div className="flex gap-1">
+                <button
+                  onClick={() => {
+                    setStudyPattern('full');
+                    handleReset();
+                  }}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                    studyPattern === 'full' 
+                      ? 'bg-purple-600 text-white' 
+                      : theme === 'dark' ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
+                  }`}
+                >
+                  전체보기
+                </button>
+                <button
+                  onClick={() => {
+                    setStudyPattern('select_definition');
+                    handleReset();
+                  }}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                    studyPattern === 'select_definition' 
+                      ? 'bg-purple-600 text-white' 
+                      : theme === 'dark' ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
+                  }`}
+                >
+                  정의 선택
+                </button>
+                <button
+                  onClick={() => {
+                    setStudyPattern('find_topic');
+                    handleReset();
+                  }}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                    studyPattern === 'find_topic' 
+                      ? 'bg-purple-600 text-white' 
+                      : theme === 'dark' ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
+                  }`}
+                >
+                  토픽 찾기
+                </button>
+              </div>
+              {/* 선택지 개수 설정 (패턴 2, 3일 때만) */}
+              {(studyPattern === 'select_definition' || studyPattern === 'find_topic') && (
+                <div className="flex items-center gap-2">
+                  <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>선택지:</span>
+                  {[2, 3, 5].map(count => (
+                    <button
+                      key={count}
+                      onClick={() => {
+                        setChoiceCount(count);
+                        handleReset();
+                      }}
+                      className={`px-2 py-1 rounded text-xs font-medium transition-colors ${
+                        choiceCount === count
+                          ? 'bg-purple-600 text-white'
+                          : theme === 'dark' ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
+                      }`}
+                    >
+                      {count}개
+                    </button>
+                  ))}
+                </div>
+              )}
+              {/* 학습 모드 선택 */}
+              <div className="flex gap-1">
+                <button
+                  onClick={() => {
+                    setStudyMode('random');
+                    handleReset();
+                  }}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                    studyMode === 'random' 
+                      ? 'bg-blue-600 text-white' 
+                      : theme === 'dark' ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
+                  }`}
+                >
+                  랜덤
+                </button>
+                <button
+                  onClick={() => {
+                    setStudyMode('sequential');
+                    handleReset();
+                  }}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                    studyMode === 'sequential' 
+                      ? 'bg-blue-600 text-white' 
+                      : theme === 'dark' ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
+                  }`}
+                >
+                  순차
+                </button>
+              </div>
             </div>
           </div>
 
@@ -247,97 +355,237 @@ export default function StudyPage() {
               className="bg-white rounded-lg shadow-sm border p-6"
               style={{
                 background: 'var(--bg-card)',
-                borderColor: 'var(--border-color)'
+                borderColor: 'var(--border-color)',
+                minHeight: '600px',
+                height: '600px',
+                display: 'flex',
+                flexDirection: 'column'
               }}
             >
-              <div className="space-y-6">
-                {/* 토픽 정보 */}
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <BookOpen className="w-5 h-5" style={{ color: 'var(--accent-blue)' }} />
-                      <h2 className="text-xl font-bold" style={{ color: 'var(--text-primary)' }}>
-                        {currentTopic.topic}
-                      </h2>
-                      {currentTopic.importance && (
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                          currentTopic.importance === '상' ? 'bg-red-100 text-red-800' :
-                          currentTopic.importance === '중' ? 'bg-yellow-100 text-yellow-800' :
-                          'bg-gray-100 text-gray-800'
-                        }`}>
-                          {currentTopic.importance}
+              <div className="space-y-6 flex-1 overflow-y-auto pr-2" style={{ maxHeight: 'calc(600px - 80px)' }}>
+                {/* 토픽 정보 - 패턴에 따라 다르게 표시 */}
+                {(studyPattern === 'full' || studyPattern === 'select_definition') && (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <BookOpen className="w-5 h-5" style={{ color: 'var(--accent-blue)' }} />
+                        <h2 className="text-xl font-bold" style={{ color: 'var(--text-primary)' }}>
+                          {currentTopic.topic}
+                        </h2>
+                        {currentTopic.importance && (
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                            currentTopic.importance === '상' ? 'bg-red-100 text-red-800' :
+                            currentTopic.importance === '중' ? 'bg-yellow-100 text-yellow-800' :
+                            'bg-gray-100 text-gray-800'
+                          }`}>
+                            {currentTopic.importance}
+                          </span>
+                        )}
+                      </div>
+                      {studyMode === 'sequential' && (
+                        <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                          {currentIndex + 1} / {topics.length}
                         </span>
                       )}
                     </div>
-                    {studyMode === 'sequential' && (
-                      <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-                        {currentIndex + 1} / {topics.length}
-                      </span>
+
+                    {currentTopic.topics_eng && (
+                      <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                        {currentTopic.topics_eng}
+                      </p>
                     )}
-                  </div>
 
-                  {currentTopic.topics_eng && (
-                    <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-                      {currentTopic.topics_eng}
-                    </p>
-                  )}
-
-                  {currentTopic.topics_loc && (
-                    <p className="text-base" style={{ color: 'var(--text-primary)' }}>
-                      {currentTopic.topics_loc}
-                    </p>
-                  )}
-
-                  <div className="flex gap-2">
-                    {currentTopic.category_l1 && (
-                      <span className="px-2 py-1 rounded text-xs" style={{ background: 'var(--bg-tertiary)', color: 'var(--text-secondary)' }}>
-                        {currentTopic.category_l1}
-                      </span>
+                    {currentTopic.topics_loc && (
+                      <p className="text-base" style={{ color: 'var(--text-primary)' }}>
+                        {currentTopic.topics_loc}
+                      </p>
                     )}
-                    {currentTopic.category_l2 && (
-                      <span className="px-2 py-1 rounded text-xs" style={{ background: 'var(--bg-tertiary)', color: 'var(--text-secondary)' }}>
-                        {currentTopic.category_l2}
-                      </span>
-                    )}
-                  </div>
-                </div>
 
-                {/* 정의 영역 */}
-                {currentTopic.definition && (
-                  <div className="border-t pt-4" style={{ borderColor: 'var(--border-color)' }}>
-                    <div className="flex items-center justify-between mb-2">
-                      <h3 className="font-semibold" style={{ color: 'var(--text-primary)' }}>정의</h3>
-                      <button
-                        onClick={() => setShowDefinition(!showDefinition)}
-                        className="flex items-center gap-1 text-sm"
-                        style={{ color: 'var(--text-secondary)' }}
-                      >
-                        {showDefinition ? (
-                          <>
-                            <EyeOff className="w-4 h-4" />
-                            <span>숨기기</span>
-                          </>
-                        ) : (
-                          <>
-                            <Eye className="w-4 h-4" />
-                            <span>보기</span>
-                          </>
-                        )}
-                      </button>
+                    <div className="flex gap-2">
+                      {currentTopic.category_l1 && (
+                        <span className="px-2 py-1 rounded text-xs" style={{ background: 'var(--bg-tertiary)', color: 'var(--text-secondary)' }}>
+                          {currentTopic.category_l1}
+                        </span>
+                      )}
+                      {currentTopic.category_l2 && (
+                        <span className="px-2 py-1 rounded text-xs" style={{ background: 'var(--bg-tertiary)', color: 'var(--text-secondary)' }}>
+                          {currentTopic.category_l2}
+                        </span>
+                      )}
                     </div>
-                    {showDefinition && (
-                      <motion.div
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: 'auto' }}
-                        exit={{ opacity: 0, height: 0 }}
-                        className="p-3 rounded"
-                        style={{ background: 'var(--bg-tertiary)' }}
-                      >
-                        <p className="text-sm whitespace-pre-wrap" style={{ color: 'var(--text-primary)' }}>
-                          {currentTopic.definition}
-                        </p>
-                      </motion.div>
+                  </div>
+                )}
+
+                {/* 패턴 3: 토픽 정보 숨김 */}
+                {studyPattern === 'find_topic' && (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <BookOpen className="w-5 h-5" style={{ color: 'var(--accent-blue)' }} />
+                        <h2 className="text-xl font-bold" style={{ color: 'var(--text-primary)' }}>
+                          토픽 찾기
+                        </h2>
+                      </div>
+                      {studyMode === 'sequential' && (
+                        <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                          {currentIndex + 1} / {topics.length}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* 패턴별 컨텐츠 표시 */}
+                {studyPattern === 'full' && (
+                  <>
+                    {/* 정의 영역 - 항상 표시 */}
+                    {currentTopic.definition && (
+                      <div className="border-t pt-4" style={{ borderColor: 'var(--border-color)' }}>
+                        <h3 className="font-semibold mb-2" style={{ color: 'var(--text-primary)' }}>정의</h3>
+                        <div className="p-3 rounded" style={{ background: 'var(--bg-tertiary)' }}>
+                          <p className="text-sm whitespace-pre-wrap" style={{ color: 'var(--text-primary)' }}>
+                            {currentTopic.definition}
+                          </p>
+                        </div>
+                      </div>
                     )}
+                  </>
+                )}
+
+                {/* 패턴 2: 정의 선택 */}
+                {studyPattern === 'select_definition' && currentTopic.definition && (
+                  <div className="border-t pt-4" style={{ borderColor: 'var(--border-color)' }}>
+                    <h3 className="font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>
+                      다음 중 올바른 정의를 선택하세요
+                    </h3>
+                    <div className="space-y-2">
+                      {choiceOptions.map((option, index) => {
+                        const isCorrect = option.id === currentTopic.id;
+                        const isSelected = selectedAnswer === index;
+                        return (
+                          <button
+                            key={option.id}
+                            onClick={() => handleChoiceSelect(index)}
+                            disabled={showAnswer}
+                            className={`w-full p-4 rounded-lg border-2 text-left transition-all ${
+                              showAnswer
+                                ? isCorrect
+                                  ? 'bg-green-100 border-green-500'
+                                  : isSelected && !isCorrect
+                                  ? 'bg-red-100 border-red-500'
+                                  : 'bg-gray-100 border-gray-300'
+                                : isSelected
+                                ? 'bg-purple-100 border-purple-500'
+                                : 'bg-white border-gray-300 hover:border-purple-300'
+                            }`}
+                            style={{
+                              background: showAnswer
+                                ? isCorrect
+                                  ? 'rgba(34, 197, 94, 0.1)'
+                                  : isSelected && !isCorrect
+                                  ? 'rgba(239, 68, 68, 0.1)'
+                                  : 'var(--bg-tertiary)'
+                                : isSelected
+                                ? 'rgba(147, 51, 234, 0.1)'
+                                : 'var(--bg-card)',
+                              borderColor: showAnswer
+                                ? isCorrect
+                                  ? '#22c55e'
+                                  : isSelected && !isCorrect
+                                  ? '#ef4444'
+                                  : 'var(--border-color)'
+                                : isSelected
+                                ? '#9333ea'
+                                : 'var(--border-color)'
+                            }}
+                          >
+                            <p className="text-sm whitespace-pre-wrap" style={{ color: 'var(--text-primary)' }}>
+                              {option.definition}
+                            </p>
+                            {showAnswer && isCorrect && (
+                              <span className="text-xs font-medium text-green-600 mt-2 block">✓ 정답</span>
+                            )}
+                            {showAnswer && isSelected && !isCorrect && (
+                              <span className="text-xs font-medium text-red-600 mt-2 block">✗ 오답</span>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* 패턴 3: 토픽 찾기 */}
+                {studyPattern === 'find_topic' && currentTopic.definition && (
+                  <div className="border-t pt-4" style={{ borderColor: 'var(--border-color)' }}>
+                    <h3 className="font-semibold mb-2" style={{ color: 'var(--text-primary)' }}>정의</h3>
+                    <div className="p-3 rounded mb-4" style={{ background: 'var(--bg-tertiary)' }}>
+                      <p className="text-sm whitespace-pre-wrap" style={{ color: 'var(--text-primary)' }}>
+                        {currentTopic.definition}
+                      </p>
+                    </div>
+                    <h3 className="font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>
+                      위 정의에 해당하는 토픽을 선택하세요
+                    </h3>
+                    <div className="space-y-2">
+                      {choiceOptions.map((option, index) => {
+                        const isCorrect = option.id === currentTopic.id;
+                        const isSelected = selectedAnswer === index;
+                        return (
+                          <button
+                            key={option.id}
+                            onClick={() => handleChoiceSelect(index)}
+                            disabled={showAnswer}
+                            className={`w-full p-4 rounded-lg border-2 text-left transition-all ${
+                              showAnswer
+                                ? isCorrect
+                                  ? 'bg-green-100 border-green-500'
+                                  : isSelected && !isCorrect
+                                  ? 'bg-red-100 border-red-500'
+                                  : 'bg-gray-100 border-gray-300'
+                                : isSelected
+                                ? 'bg-purple-100 border-purple-500'
+                                : 'bg-white border-gray-300 hover:border-purple-300'
+                            }`}
+                            style={{
+                              background: showAnswer
+                                ? isCorrect
+                                  ? 'rgba(34, 197, 94, 0.1)'
+                                  : isSelected && !isCorrect
+                                  ? 'rgba(239, 68, 68, 0.1)'
+                                  : 'var(--bg-tertiary)'
+                                : isSelected
+                                ? 'rgba(147, 51, 234, 0.1)'
+                                : 'var(--bg-card)',
+                              borderColor: showAnswer
+                                ? isCorrect
+                                  ? '#22c55e'
+                                  : isSelected && !isCorrect
+                                  ? '#ef4444'
+                                  : 'var(--border-color)'
+                                : isSelected
+                                ? '#9333ea'
+                                : 'var(--border-color)'
+                            }}
+                          >
+                            <p className="font-semibold" style={{ color: 'var(--text-primary)' }}>
+                              {option.topic}
+                            </p>
+                            {option.topics_loc && (
+                              <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
+                                {option.topics_loc}
+                              </p>
+                            )}
+                            {showAnswer && isCorrect && (
+                              <span className="text-xs font-medium text-green-600 mt-2 block">✓ 정답</span>
+                            )}
+                            {showAnswer && isSelected && !isCorrect && (
+                              <span className="text-xs font-medium text-red-600 mt-2 block">✗ 오답</span>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
                 )}
 
@@ -391,29 +639,15 @@ export default function StudyPage() {
                     </div>
                   </div>
                 )}
-
-                {/* 컨트롤 버튼 */}
-                <div className="flex items-center justify-between pt-4 border-t" style={{ borderColor: 'var(--border-color)' }}>
-                  <div className="flex gap-2">
-                    {studyMode === 'sequential' && (
-                      <motion.button
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
-                        onClick={handlePrev}
-                        className="p-2 rounded-lg border"
-                        style={{
-                          background: 'var(--bg-tertiary)',
-                          borderColor: 'var(--border-color)',
-                          color: 'var(--text-secondary)'
-                        }}
-                      >
-                        <ChevronLeft className="w-5 h-5" />
-                      </motion.button>
-                    )}
+              </div>
+              {/* 컨트롤 버튼 - 고정 위치 */}
+              <div className="flex items-center justify-between pt-4 border-t mt-4 flex-shrink-0" style={{ borderColor: 'var(--border-color)' }}>
+                <div className="flex gap-2">
+                  {studyMode === 'sequential' && (
                     <motion.button
                       whileHover={{ scale: 1.05 }}
                       whileTap={{ scale: 0.95 }}
-                      onClick={handleReset}
+                      onClick={handlePrev}
                       className="p-2 rounded-lg border"
                       style={{
                         background: 'var(--bg-tertiary)',
@@ -421,23 +655,36 @@ export default function StudyPage() {
                         color: 'var(--text-secondary)'
                       }}
                     >
-                      <RotateCcw className="w-5 h-5" />
+                      <ChevronLeft className="w-5 h-5" />
                     </motion.button>
-                  </div>
+                  )}
                   <motion.button
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
-                    onClick={handleNext}
-                    className="px-6 py-2 rounded-lg font-medium"
+                    onClick={handleReset}
+                    className="p-2 rounded-lg border"
                     style={{
-                      background: 'linear-gradient(135deg, rgba(147, 51, 234, 0.8) 0%, rgba(168, 85, 247, 0.8) 100%)',
-                      color: 'white'
+                      background: 'var(--bg-tertiary)',
+                      borderColor: 'var(--border-color)',
+                      color: 'var(--text-secondary)'
                     }}
                   >
-                    다음
-                    <ChevronRight className="w-5 h-5 inline-block ml-2" />
+                    <RotateCcw className="w-5 h-5" />
                   </motion.button>
                 </div>
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={handleNext}
+                  className="px-6 py-2 rounded-lg font-medium"
+                  style={{
+                    background: 'linear-gradient(135deg, rgba(147, 51, 234, 0.8) 0%, rgba(168, 85, 247, 0.8) 100%)',
+                    color: 'white'
+                  }}
+                >
+                  다음
+                  <ChevronRight className="w-5 h-5 inline-block ml-2" />
+                </motion.button>
               </div>
             </motion.div>
           ) : (

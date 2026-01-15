@@ -131,6 +131,7 @@ const TabulatorGrid = forwardRef<TabulatorGridRef, TabulatorGridProps>((props, r
   const [pageSize, setPageSize] = useState<number | "all">("all");
   const [selectedCount, setSelectedCount] = useState<number>(0);
   const [displayedData, setDisplayedData] = useState<DataType[]>([]);
+  const [activeCategoryFilter, setActiveCategoryFilter] = useState<string | null>(null);
   
   // 선택 관련 state
   const selectedCells = useRef<HTMLElement[]>([]);
@@ -143,9 +144,11 @@ const TabulatorGrid = forwardRef<TabulatorGridRef, TabulatorGridProps>((props, r
   const shiftStartCell = useRef<HTMLElement | null>(null);
 
   // 데이터 상태 정보
-  const [dataStats, setDataStats] = useState<{total: number, selected: number}>({
+  const [dataStats, setDataStats] = useState<{total: number, filtered: number, selected: number, categoryCounts: Record<string, number>}>({
     total: data.length,
-    selected: 0
+    filtered: data.length,
+    selected: 0,
+    categoryCounts: {}
   });
 
   // 페이지네이션된 데이터 계산
@@ -209,6 +212,11 @@ const TabulatorGrid = forwardRef<TabulatorGridRef, TabulatorGridProps>((props, r
     }
   }, [currentPage, pageSize, isDataChanged, pagination]);
 
+  // 데이터가 변경될 때 통계 업데이트
+  useEffect(() => {
+    updateDataStats();
+  }, [data]);
+
   // 데이터 상태 업데이트 함수
   const updateDataStats = () => {
     if (!tabulatorRef.current) return;
@@ -216,6 +224,19 @@ const TabulatorGrid = forwardRef<TabulatorGridRef, TabulatorGridProps>((props, r
     try {
       // 전체 데이터 수
       const totalData = data.length;
+      
+      // 필터링된 데이터 수 가져오기
+      let filteredDataCount = totalData;
+      try {
+        if (typeof (tabulatorRef.current as any).getRows === 'function') {
+          const filteredRows = (tabulatorRef.current as any).getRows('active');
+          filteredDataCount = filteredRows ? filteredRows.length : totalData;
+        }
+      } catch (e) {
+        // 필터링된 데이터를 가져올 수 없으면 전체 데이터 수 사용
+        filteredDataCount = totalData;
+      }
+      
       // 선택된 데이터 수 (테이블이 초기화되었는지 확인)
       let selectedData = 0;
       try {
@@ -227,9 +248,46 @@ const TabulatorGrid = forwardRef<TabulatorGridRef, TabulatorGridProps>((props, r
         selectedData = 0;
       }
       
+      // 필터링된 데이터에서 대분류별 개수 계산
+      const categoryCounts: Record<string, number> = {};
+      try {
+        if (typeof (tabulatorRef.current as any).getRows === 'function') {
+          const filteredRows = (tabulatorRef.current as any).getRows('active');
+          if (filteredRows && filteredRows.length > 0) {
+            filteredRows.forEach((row: any) => {
+              const rowData = row.getData();
+              if (rowData) {
+                const category = rowData.category_l1 || '미분류';
+                categoryCounts[category] = (categoryCounts[category] || 0) + 1;
+              }
+            });
+          } else {
+            // 필터링된 데이터가 없으면 전체 데이터로 계산
+            data.forEach((item: any) => {
+              const category = item.category_l1 || '미분류';
+              categoryCounts[category] = (categoryCounts[category] || 0) + 1;
+            });
+          }
+        } else {
+          // getRows가 없으면 전체 데이터로 계산
+          data.forEach((item: any) => {
+            const category = item.category_l1 || '미분류';
+            categoryCounts[category] = (categoryCounts[category] || 0) + 1;
+          });
+        }
+      } catch (e) {
+        // 오류 발생 시 전체 데이터로 계산
+        data.forEach((item: any) => {
+          const category = item.category_l1 || '미분류';
+          categoryCounts[category] = (categoryCounts[category] || 0) + 1;
+        });
+      }
+      
       setDataStats({
-        total: totalData,
-        selected: selectedData
+        total: totalData, // 전체 데이터 수
+        filtered: filteredDataCount, // 필터링된 데이터 수
+        selected: selectedData,
+        categoryCounts: categoryCounts
       });
       setSelectedCount(selectedData);
 
@@ -238,7 +296,7 @@ const TabulatorGrid = forwardRef<TabulatorGridRef, TabulatorGridProps>((props, r
       const selectedElement = document.querySelector('.tabulator-footer-data-stats .selected-count');
       
       if (totalElement) {
-        totalElement.textContent = totalData.toString();
+        totalElement.textContent = filteredDataCount.toString();
       }
       
       if (selectedElement) {
@@ -1417,8 +1475,71 @@ const TabulatorGrid = forwardRef<TabulatorGridRef, TabulatorGridProps>((props, r
         <div 
           className={`flex items-center justify-between px-4 py-2 text-sm border-t ${theme === 'dark' ? 'bg-gray-700 text-gray-300 border-gray-600' : 'bg-gray-100 text-gray-600 border-gray-200'}`}
         >
-        <div className="flex items-center gap-2">
-          <span>총 <span className="font-medium">{dataStats.total}</span>개 중 <span className="font-medium">{selectedCount}</span>개 선택</span>
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className={theme === 'dark' ? 'text-gray-200' : 'text-gray-700'}>
+            총 <span className="font-bold text-base" style={{ color: theme === 'dark' ? '#60a5fa' : '#2563eb' }}>{dataStats.total}</span>개 중 
+            <span className="font-bold text-base" style={{ color: theme === 'dark' ? '#fbbf24' : '#d97706' }}>{dataStats.filtered}</span>개 표시 
+            {Object.keys(dataStats.categoryCounts).length > 0 && (
+              <span className="ml-3 inline-flex items-center gap-2 flex-wrap">
+                {Object.entries(dataStats.categoryCounts).map(([category, count]) => {
+                  const isActive = activeCategoryFilter === category;
+                  return (
+                    <span 
+                      key={category}
+                      className="inline-flex items-center gap-1 px-2 py-1 rounded border cursor-pointer transition-all hover:opacity-80"
+                      style={{
+                        backgroundColor: isActive 
+                          ? (theme === 'dark' ? 'rgba(59, 130, 246, 0.4)' : 'rgba(59, 130, 246, 0.25)')
+                          : (theme === 'dark' ? 'rgba(59, 130, 246, 0.15)' : 'rgba(59, 130, 246, 0.1)'),
+                        borderColor: isActive
+                          ? (theme === 'dark' ? 'rgba(59, 130, 246, 0.8)' : 'rgba(59, 130, 246, 0.6)')
+                          : (theme === 'dark' ? 'rgba(59, 130, 246, 0.5)' : 'rgba(59, 130, 246, 0.4)'),
+                        borderWidth: isActive ? '2px' : '1px',
+                        color: theme === 'dark' ? '#93c5fd' : '#1e40af',
+                        transform: isActive ? 'scale(1.05)' : 'scale(1)'
+                      }}
+                      onClick={() => {
+                        if (tabulatorRef.current) {
+                          if (isActive) {
+                            // 이미 선택된 경우 필터 해제
+                            tabulatorRef.current.setHeaderFilterValue('category_l1', '');
+                            setActiveCategoryFilter(null);
+                          } else {
+                            // 다른 대분류가 선택되어 있으면 해제하고 새로 선택
+                            if (activeCategoryFilter) {
+                              tabulatorRef.current.setHeaderFilterValue('category_l1', '');
+                            }
+                            // 해당 대분류로 필터링
+                            tabulatorRef.current.setHeaderFilterValue('category_l1', category);
+                            setActiveCategoryFilter(category);
+                          }
+                          // 필터링 후 통계 업데이트 (이벤트가 발생하기 전에 약간의 지연)
+                          setTimeout(() => {
+                            updateDataStats();
+                          }, 150);
+                        }
+                      }}
+                      title={isActive ? '클릭하여 필터 해제' : '클릭하여 필터링'}
+                    >
+                      <span className="font-bold text-sm">{category}</span>
+                      <span className="font-semibold text-sm">: {count}개</span>
+                    </span>
+                  );
+                })}
+              </span>
+            )}
+            {selectedCount > 0 && (
+              <span className="ml-3">
+                <span className="font-bold px-2 py-0.5 rounded text-sm" style={{
+                  backgroundColor: theme === 'dark' ? 'rgba(34, 197, 94, 0.3)' : 'rgba(34, 197, 94, 0.15)',
+                  color: theme === 'dark' ? '#86efac' : '#15803d',
+                  border: `1px solid ${theme === 'dark' ? 'rgba(34, 197, 94, 0.5)' : 'rgba(34, 197, 94, 0.3)'}`
+                }}>
+                  {selectedCount}개 선택
+                </span>
+              </span>
+            )}
+          </span>
         </div>
         <div className="flex items-center gap-2">
           <span>Page Size</span>

@@ -450,16 +450,63 @@ export function Header() {
     }}>
       <div className="flex justify-between items-center px-3 py-2">
         <div className="flex items-center space-x-4">
-          {/* HTNS 로고 */}
+          {/* IT학습자료 로고 */}
           <Link href="/">
-            <div className="flex items-center space-x-2">
-              <Image 
-                src="/images/htns-logo.png" 
-                alt="HTNS Logo" 
-                width={95} 
-                height={32} 
-                className="object-contain"
-              />
+            <div className="flex items-center gap-2">
+              {/* 아이콘 */}
+              <div 
+                className="relative w-10 h-10 rounded-lg flex items-center justify-center"
+                style={{
+                  background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+                  boxShadow: '0 2px 8px rgba(59, 130, 246, 0.3)'
+                }}
+              >
+                <svg 
+                  width="24" 
+                  height="24" 
+                  viewBox="0 0 24 24" 
+                  fill="none" 
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  {/* 전구 본체 */}
+                  <path 
+                    d="M12 2C8.13 2 5 5.13 5 9C5 11.38 6.19 13.47 8 14.74V17C8 17.55 8.45 18 9 18H15C15.55 18 16 17.55 16 17V14.74C17.81 13.47 19 11.38 19 9C19 5.13 15.87 2 12 2Z" 
+                    fill="rgba(255, 255, 255, 0.95)"
+                  />
+                  {/* 회로판/네트워크 패턴 */}
+                  <circle cx="9" cy="8" r="1" fill="#60a5fa" />
+                  <circle cx="12" cy="7" r="1" fill="#60a5fa" />
+                  <circle cx="15" cy="8" r="1" fill="#60a5fa" />
+                  <line x1="9" y1="8" x2="12" y2="7" stroke="#60a5fa" strokeWidth="0.5" />
+                  <line x1="12" y1="7" x2="15" y2="8" stroke="#60a5fa" strokeWidth="0.5" />
+                  <circle cx="10" cy="10" r="0.8" fill="#60a5fa" />
+                  <circle cx="14" cy="10" r="0.8" fill="#60a5fa" />
+                  <line x1="10" y1="10" x2="14" y2="10" stroke="#60a5fa" strokeWidth="0.5" />
+                  {/* 전구 밑부분 */}
+                  <rect x="10" y="18" width="4" height="2" rx="1" fill="rgba(255, 255, 255, 0.9)" />
+                </svg>
+              </div>
+              {/* 텍스트 */}
+              <div className="flex items-baseline gap-1">
+                <span 
+                  className="text-lg font-semibold"
+                  style={{
+                    color: theme === 'dark' ? '#60a5fa' : '#2563eb',
+                    fontWeight: 600
+                  }}
+                >
+                  IT
+                </span>
+                <span 
+                  className="text-lg font-medium"
+                  style={{
+                    color: theme === 'dark' ? '#94a3b8' : '#475569',
+                    fontWeight: 500
+                  }}
+                >
+                  학습자료
+                </span>
+              </div>
             </div>
           </Link>
           {/* 메뉴 네비게이션 - Pill Navigation 스타일 */}

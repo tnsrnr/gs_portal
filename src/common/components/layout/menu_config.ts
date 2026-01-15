@@ -1,6 +1,7 @@
 import { 
   Edit3,
-  Eye
+  Eye,
+  BookOpen
 } from "lucide-react";
 import type { LucideIcon } from 'lucide-react';
 
@@ -32,6 +33,12 @@ export const menuItems: MenuItem[] = [
     path: '/view', 
     icon: Eye,
     description: '학습 자료 조회'
+  },
+  { 
+    name: '학습', 
+    path: '/study', 
+    icon: BookOpen,
+    description: '토픽 학습'
   }
 ];
 
