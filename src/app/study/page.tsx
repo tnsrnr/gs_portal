@@ -33,6 +33,7 @@ export default function StudyPage() {
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
   const [showAnswer, setShowAnswer] = useState<boolean>(false);
   const [choiceOptions, setChoiceOptions] = useState<TopicData[]>([]);
+  const [currentTopicState, setCurrentTopicState] = useState<TopicData | null>(null);
 
   useEffect(() => {
     fetchTopics();
@@ -92,10 +93,14 @@ export default function StudyPage() {
     setShowAnswer(false);
   };
 
+  // 현재 토픽 선택 및 저장
   useEffect(() => {
     const topic = getCurrentTopic();
-    if (topic && topics.length > 0 && (studyPattern === 'select_definition' || studyPattern === 'find_topic')) {
-      generateChoices(topic);
+    if (topic) {
+      setCurrentTopicState(topic);
+      if (topics.length > 0 && (studyPattern === 'select_definition' || studyPattern === 'find_topic')) {
+        generateChoices(topic);
+      }
     }
   }, [currentIndex, studyMode, studyPattern, choiceCount, topics.length, studiedTopics]);
 
@@ -135,9 +140,21 @@ export default function StudyPage() {
     if (showAnswer) return;
     setSelectedAnswer(index);
     setShowAnswer(true);
+    
+    // 선택한 답이 정답인지 확인 (저장된 currentTopicState 사용)
+    const selectedOption = choiceOptions[index];
+    const isCorrect = selectedOption && selectedOption.id === currentTopicState?.id;
+    
+    // 정답을 클릭한 경우 1초 후 자동으로 다음으로 넘어감
+    if (isCorrect) {
+      setTimeout(() => {
+        handleNext();
+      }, 1000);
+    }
   };
 
-  const currentTopic = getCurrentTopic();
+  // 저장된 토픽 사용 (랜덤 모드에서 토픽이 바뀌지 않도록)
+  const currentTopic = currentTopicState;
   const progress = topics.length > 0 ? (studiedTopics.size / topics.length) * 100 : 0;
 
   return (
