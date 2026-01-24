@@ -9,7 +9,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/common/compo
 import { TopicEditForm } from './topic_edit_form';
 
 interface TopicData extends DataType {
-  id: number;
   topics?: string; // 토픽(key)
   topics_eng?: string; // 토픽(영문명)
   topics_loc?: string; // 토픽(한글명)
@@ -56,6 +55,54 @@ export function TopicsTable({ data, loading, onDataUpdate }: TopicsTableProps) {
       .tabulator-small-font .tabulator-header-cell {
         font-weight: 600 !important;
       }
+
+      /* 하단(대분류 탭/페이지네이션) 잘림 방지 + 1줄 고정(가로 스크롤) */
+      .tabulator-small-font .tabulator-footer,
+      .tabulator-small-font .tabulator-footer-contents,
+      .tabulator-small-font .tabulator-paginator {
+        font-size: 0.55rem !important;
+        line-height: 1.0 !important;
+        padding: 1px 4px !important;
+        min-height: 18px !important;
+      }
+
+      .tabulator-small-font .tabulator-footer-contents {
+        display: flex !important;
+        flex-wrap: nowrap !important;
+        gap: 4px !important;
+        overflow-x: auto !important;
+        overflow-y: hidden !important;
+        white-space: nowrap !important;
+        -webkit-overflow-scrolling: touch;
+      }
+
+      .tabulator-small-font .tabulator-footer-contents > * {
+        flex: 0 0 auto !important;
+        white-space: nowrap !important;
+      }
+
+      .tabulator-small-font .tabulator-page {
+        font-size: 0.55rem !important;
+        line-height: 1.0 !important;
+        padding: 1px 4px !important;
+        height: 18px !important;
+        min-height: 18px !important;
+        margin: 0 2px !important;
+      }
+
+      .tabulator-small-font .tabulator-footer-data-stats {
+        font-size: 0.55rem !important;
+        line-height: 1.0 !important;
+      }
+
+      .tabulator-small-font .tabulator-footer button,
+      .tabulator-small-font .tabulator-footer .tabulator-page {
+        font-size: 0.55rem !important;
+        padding: 1px 4px !important;
+        height: 18px !important;
+        min-height: 18px !important;
+        white-space: nowrap !important;
+      }
     `;
     document.head.appendChild(style);
     return () => {
@@ -86,16 +133,6 @@ export function TopicsTable({ data, loading, onDataUpdate }: TopicsTableProps) {
       title: "분류",
       headerHozAlign: "center",
       columns: [
-        { 
-          title: "ID", 
-          field: "id", 
-          sorter: "number",
-          headerFilter: true,
-          headerFilterPlaceholder: "",
-          headerHozAlign: "center",
-          hozAlign: "center",
-          width: 60
-        },
         { 
           title: "중요도", 
           field: "importance", 
@@ -269,6 +306,7 @@ export function TopicsTable({ data, loading, onDataUpdate }: TopicsTableProps) {
 
   // Tabulator 추가 옵션 (메모이제이션하여 불필요한 재렌더링 방지)
   const additionalOptions = useMemo(() => ({
+    index: "topic", // 데이터를 식별하는 키 필드 지정
     movableColumns: true,
     layout: "fitColumns", // fitData 대신 fitColumns 사용
     renderVertical: "basic",
@@ -279,7 +317,8 @@ export function TopicsTable({ data, loading, onDataUpdate }: TopicsTableProps) {
     resizableColumns: true,
     responsiveLayout: false,
     theme: gridTheme,
-    height: "650px", // 고정 높이 설정 - 헤더와 푸터는 고정, 데이터 영역만 스크롤
+    // 부모 컨테이너(730px) 안에서 푸터까지 포함해 "벽(잘림)" 없이 고정되도록
+    height: "100%",
     cssClass: "tabulator-small-font", // 작은 글자 크기 클래스 추가
     dataFiltered: function(filters: any) {
       setHasActiveFilters(filters.length > 0);

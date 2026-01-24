@@ -24,7 +24,6 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     
     // 모든 컬럼 필터 파라미터 추출
-    const id = searchParams.get('id');
     const importance = searchParams.get('importance');
     const category_l1 = searchParams.get('category_l1');
     const category_l2 = searchParams.get('category_l2');
@@ -38,20 +37,14 @@ export async function GET(request: NextRequest) {
     const cheatsheet = searchParams.get('cheatsheet');
     const additional_info = searchParams.get('additional_info');
     
-    // 기본 쿼리: 모든 토픽을 ID 오름차순으로 조회
-    // SELECT * FROM topics WHERE 1=1 ORDER BY id
+    // 기본 쿼리: 모든 토픽을 카테고리 순으로 조회
+    // SELECT * FROM topics WHERE 1=1 ORDER BY category_l1, category_l2
     let query = `
       SELECT * FROM topics 
       WHERE 1=1 
     `;
     const values: any[] = [];
     let paramIndex = 1;
-
-    // ID 필터 추가
-    if (id) {
-      query += ` AND id = $${paramIndex++}`;
-      values.push(parseInt(id));
-    }
 
     // 중요도 필터 추가
     if (importance) {
@@ -126,7 +119,7 @@ export async function GET(request: NextRequest) {
     }
 
     // 정렬 추가 (ORDER BY)
-    query += ` ORDER BY id`;
+    query += ` ORDER BY category_l1, category_l2`;
 
     // 바인드 변수를 실제 값으로 치환한 쿼리 생성 (콘솔 출력용)
     // 역순으로 치환하여 $10이 $1보다 먼저 치환되도록 함

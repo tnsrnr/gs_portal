@@ -1459,26 +1459,31 @@ const TabulatorGrid = forwardRef<TabulatorGridRef, TabulatorGridProps>((props, r
   }, [data, columns, theme]); // 데이터, 컬럼, 테마가 변경될 때 다시 렌더링
 
   return (
-    <div className={`tabulator-grid-wrapper ${className}`}>
+    <div
+      className={`tabulator-grid-wrapper ${className}`}
+      style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}
+    >
       <div 
         className={`border rounded overflow-hidden ${theme === 'dark' ? 'tabulator-dark' : 'tabulator-light'}`}
         style={{ 
           borderColor: theme === 'dark' ? '#374151' : '#e2e8f0',
-          backgroundColor: theme === 'dark' ? '#1f2937' : 'white'
+          backgroundColor: theme === 'dark' ? '#1f2937' : 'white',
+          flex: 1,
+          minHeight: 0
         }}
       >
-        <div ref={tableRef} className={`w-full ${theme === 'dark' ? 'tabulator-dark' : 'tabulator-light'}`}></div>
+        <div ref={tableRef} className={`w-full h-full ${theme === 'dark' ? 'tabulator-dark' : 'tabulator-light'}`}></div>
       </div>
       
       {/* 커스텀 푸터 */}
       {showFooter && (
         <div 
-          className={`flex items-center justify-between px-4 py-2 text-sm border-t ${theme === 'dark' ? 'bg-gray-700 text-gray-300 border-gray-600' : 'bg-gray-100 text-gray-600 border-gray-200'}`}
+          className={`flex items-center justify-between px-3 py-1 text-[10px] border-t flex-shrink-0 ${theme === 'dark' ? 'bg-gray-700 text-gray-300 border-gray-600' : 'bg-gray-100 text-gray-600 border-gray-200'}`}
         >
         <div className="flex items-center gap-2 flex-wrap">
           <span className={theme === 'dark' ? 'text-gray-200' : 'text-gray-700'}>
-            총 <span className="font-bold text-base" style={{ color: theme === 'dark' ? '#60a5fa' : '#2563eb' }}>{dataStats.total}</span>개 중 
-            <span className="font-bold text-base" style={{ color: theme === 'dark' ? '#fbbf24' : '#d97706' }}>{dataStats.filtered}</span>개 표시 
+            총 <span className="font-bold text-[10px]" style={{ color: theme === 'dark' ? '#60a5fa' : '#2563eb' }}>{dataStats.total}</span>개 중 
+            <span className="font-bold text-[10px]" style={{ color: theme === 'dark' ? '#fbbf24' : '#d97706' }}>{dataStats.filtered}</span>개 표시 
             {Object.keys(dataStats.categoryCounts).length > 0 && (
               <span className="ml-3 inline-flex items-center gap-2 flex-wrap">
                 {Object.entries(dataStats.categoryCounts).map(([category, count]) => {
@@ -1486,7 +1491,7 @@ const TabulatorGrid = forwardRef<TabulatorGridRef, TabulatorGridProps>((props, r
                   return (
                     <span 
                       key={category}
-                      className="inline-flex items-center gap-1 px-2 py-1 rounded border cursor-pointer transition-all hover:opacity-80"
+                      className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded border cursor-pointer transition-all hover:opacity-80"
                       style={{
                         backgroundColor: isActive 
                           ? (theme === 'dark' ? 'rgba(59, 130, 246, 0.4)' : 'rgba(59, 130, 246, 0.25)')
@@ -1521,8 +1526,8 @@ const TabulatorGrid = forwardRef<TabulatorGridRef, TabulatorGridProps>((props, r
                       }}
                       title={isActive ? '클릭하여 필터 해제' : '클릭하여 필터링'}
                     >
-                      <span className="font-bold text-sm">{category}</span>
-                      <span className="font-semibold text-sm">: {count}개</span>
+                      <span className="font-bold text-[10px]">{category}</span>
+                      <span className="font-semibold text-[10px]">: {count}개</span>
                     </span>
                   );
                 })}
@@ -1530,7 +1535,7 @@ const TabulatorGrid = forwardRef<TabulatorGridRef, TabulatorGridProps>((props, r
             )}
             {selectedCount > 0 && (
               <span className="ml-3">
-                <span className="font-bold px-2 py-0.5 rounded text-sm" style={{
+                <span className="font-bold px-1.5 py-0.5 rounded text-[10px]" style={{
                   backgroundColor: theme === 'dark' ? 'rgba(34, 197, 94, 0.3)' : 'rgba(34, 197, 94, 0.15)',
                   color: theme === 'dark' ? '#86efac' : '#15803d',
                   border: `1px solid ${theme === 'dark' ? 'rgba(34, 197, 94, 0.5)' : 'rgba(34, 197, 94, 0.3)'}`

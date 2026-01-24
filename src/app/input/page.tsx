@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Plus, ArrowLeft, Upload, FileSpreadsheet, Save, FileUp } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
-import { saveTopic, saveTopics, getMaxId } from '../actions/topics';
+import { saveTopic, saveTopics } from '../actions/topics';
 import TabulatorGrid, { TabulatorGridRef } from '@/common/components/TabulatorGrid';
 import "tabulator-tables/dist/css/tabulator.min.css";
 import { useTheme } from '@/common/hooks/useTheme';
@@ -19,23 +19,8 @@ export default function InputPage() {
   const [saving, setSaving] = useState(false);
   const [gridData, setGridData] = useState<any[]>([]);
   const [parseError, setParseError] = useState<string>('');
-  const [nextId, setNextId] = useState<number>(1);
-  const nextIdRef = useRef<number>(1); // ref로 최신 값 유지
   const bulkGridRef = useRef<TabulatorGridRef>(null);
   const { theme } = useTheme();
-
-  // 최대 ID 조회
-  useEffect(() => {
-    const fetchMaxId = async () => {
-      const result = await getMaxId();
-      if (result.success) {
-        const newNextId = result.maxId + 1;
-        setNextId(newNextId);
-        nextIdRef.current = newNextId;
-      }
-    };
-    fetchMaxId();
-  }, []);
 
   // 엑셀 파일 업로드 및 파싱
   const handleExcelUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -65,7 +50,6 @@ export default function InputPage() {
       
       const parsed: any[] = [];
       const errors: string[] = [];
-      let maxId = nextIdRef.current - 1;
       
       // 병합된 셀 처리를 위한 이전 값 추적
       let lastCategoryL1 = '';
@@ -77,31 +61,30 @@ export default function InputPage() {
           return;
         }
 
-        // 컬럼 순서: A=id, B=importance, C=category_l1, D=category_l2, E=topic, F=topics_eng, G=topics_loc, H=child_topic, I=definition, J=cheatsheet, K=additional_info
-        const idFromExcel = row[0]?.toString().trim() || '';
-        const importance = row[1]?.toString().trim() || '';
+        // 컬럼 순서: A=importance, B=category_l1, C=category_l2, D=topic, E=topics_eng, F=topics_loc, G=child_topic, H=definition, I=cheatsheet, J=additional_info
+        const importance = row[0]?.toString().trim() || '';
         // 병합된 셀 처리: 값이 있으면 사용, 없으면 이전 행의 값 사용
-        let category_l1 = row[2]?.toString().trim() || '';
+        let category_l1 = row[1]?.toString().trim() || '';
         if (!category_l1 && lastCategoryL1) {
           category_l1 = lastCategoryL1;
         } else if (category_l1) {
           lastCategoryL1 = category_l1;
         }
         
-        let category_l2 = row[3]?.toString().trim() || '';
+        let category_l2 = row[2]?.toString().trim() || '';
         if (!category_l2 && lastCategoryL2) {
           category_l2 = lastCategoryL2;
         } else if (category_l2) {
           lastCategoryL2 = category_l2;
         }
         
-        const topic = row[4]?.toString().trim() || '';
-        const topics_eng = row[5]?.toString().trim() || '';
-        const topics_loc = row[6]?.toString().trim() || '';
-        const child_topic = row[7]?.toString().trim() || '';
-        const definition = row[8]?.toString().trim() || '';
-        const cheatsheet = row[9]?.toString().trim() || '';
-        const additional_info = row[10]?.toString().trim() || '';
+        const topic = row[3]?.toString().trim() || '';
+        const topics_eng = row[4]?.toString().trim() || '';
+        const topics_loc = row[5]?.toString().trim() || '';
+        const child_topic = row[6]?.toString().trim() || '';
+        const definition = row[7]?.toString().trim() || '';
+        const cheatsheet = row[8]?.toString().trim() || '';
+        const additional_info = row[9]?.toString().trim() || '';
 
         // 필수 필드 검증 (중요도, 대분류, 토픽)
         // 실제 엑셀 행 번호는 헤더 2행 + 인덱스 + 1
@@ -113,23 +96,15 @@ export default function InputPage() {
 
         // 중요도 검증
         if (!['상', '중', '하'].includes(importance)) {
-          errors.push(`행 ${excelRowNumber}: 중요도는 '상', '중', '하' 중 하나여야 합니다 (현재: ${importance})`);
+          errors.push(`행 ${excelRowNumber}: 중요도는 '상', '중', '하' 중 하나여야 합니다 (현재 값: "${importance}")`);
           return;
         }
 
-        // ID 처리
-        let rowId: string;
-        if (idFromExcel && !isNaN(parseInt(idFromExcel, 10))) {
-          const idNum = parseInt(idFromExcel, 10);
-          rowId = idNum.toString();
-          maxId = Math.max(maxId, idNum);
-        } else {
-          maxId++;
-          rowId = maxId.toString();
-        }
+        // 임시 ID 생성 (그리드 표시용)
+        const rowId = Date.now().toString() + Math.random().toString(36).substr(2, 9);
 
         parsed.push({
-          id: rowId,
+          id: rowId, // Tabulator용 임시 ID
           importance,
           category_l1,
           category_l2: category_l2 || '',
@@ -150,11 +125,6 @@ export default function InputPage() {
       }
 
       if (parsed.length > 0) {
-        // nextId 업데이트
-        const newNextId = maxId + 1;
-        nextIdRef.current = newNextId;
-        setNextId(newNextId);
-        
         // 그리드에 데이터 추가
         setGridData(parsed);
         
@@ -210,13 +180,12 @@ export default function InputPage() {
       lines.forEach((line, index) => {
         const columns = line.split('\t').map(col => col.trim());
         
-        // 컬럼 순서: id, importance, category_l1, category_l2, topic, topics_eng, topics_loc, child_topic, definition, cheatsheet, additional_info
-        // 최소 컬럼 수는 id 포함 4개이지만, 필수값은 importance, category_l1, topic 3개
-        if (columns.length < 4) {
-          // ID가 없어도 나머지 필수값만 있으면 허용
-          const importance = columns[1] || '';
-          const category_l1 = columns[2] || '';
-          const topic = columns[4] || '';
+        // 컬럼 순서: importance, category_l1, category_l2, topic, topics_eng, topics_loc, child_topic, definition, cheatsheet, additional_info
+        // 최소 컬럼 수는 필수값 importance, category_l1, topic 포함해야 함
+        if (columns.length < 3) {
+          const importance = columns[0] || '';
+          const category_l1 = columns[1] || '';
+          const topic = columns[3] || '';
           
           if (!importance || !category_l1 || !topic) {
             errors.push(`행 ${index + 1}: 필수 항목(중요도, 대분류, 토픽)이 누락되었습니다`);
@@ -224,17 +193,16 @@ export default function InputPage() {
           }
         }
 
-        const idFromExcel = columns[0] || '';
-        const importance = columns[1] || '';
-        const category_l1 = columns[2] || '';
-        const category_l2 = columns[3] || '';
-        const topic = columns[4] || '';
-        const topics_eng = columns[5] || '';
-        const topics_loc = columns[6] || '';
-        const child_topic = columns[7] || '';
-        const definition = columns[8] || '';
-        const cheatsheet = columns[9] || '';
-        const additional_info = columns[10] || '';
+        const importance = columns[0] || '';
+        const category_l1 = columns[1] || '';
+        const category_l2 = columns[2] || '';
+        const topic = columns[3] || '';
+        const topics_eng = columns[4] || '';
+        const topics_loc = columns[5] || '';
+        const child_topic = columns[6] || '';
+        const definition = columns[7] || '';
+        const cheatsheet = columns[8] || '';
+        const additional_info = columns[9] || '';
 
         // 필수 필드 검증 (중요도, 대분류, 토픽)
         if (!importance || !category_l1 || !topic) {
@@ -244,20 +212,15 @@ export default function InputPage() {
 
         // 중요도 검증
         if (!['상', '중', '하'].includes(importance)) {
-          errors.push(`행 ${index + 1}: 중요도는 '상', '중', '하' 중 하나여야 합니다 (현재: ${importance})`);
+          errors.push(`행 ${index + 1}: 중요도는 '상', '중', '하' 중 하나여야 합니다 (현재 값: "${importance}")`);
           return;
         }
 
-        // ID가 비어있거나 숫자가 아니면 자동으로 할당
-        let id: number;
-        if (idFromExcel && !isNaN(Number(idFromExcel))) {
-          id = Number(idFromExcel);
-        } else {
-          id = nextId + index;
-        }
+        // 임시 ID 생성 (그리드 표시용)
+        const rowId = Date.now().toString() + Math.random().toString(36).substr(2, 9) + index;
 
         const rowData = {
-          id: id.toString(),
+          id: rowId, // Tabulator용 임시 ID
           importance: importance || '중',
           category_l1,
           category_l2,
@@ -294,29 +257,11 @@ export default function InputPage() {
           setTimeout(() => {
             const currentData = table.getData();
             setGridData(currentData);
-            
-            // 다음 ID 업데이트
-            const maxId = Math.max(
-              ...currentData.map((row: any) => {
-                const idNum = parseInt(row.id, 10);
-                return isNaN(idNum) ? 0 : idNum;
-              }),
-              nextId - 1
-            );
-            setNextId(maxId + 1);
           }, 100);
         } else {
           // 테이블이 아직 생성되지 않았으면 상태만 업데이트
           setGridData(prev => {
             const updated = [...prev, ...parsed];
-            const maxId = Math.max(
-              ...updated.map(row => {
-                const idNum = parseInt(row.id, 10);
-                return isNaN(idNum) ? 0 : idNum;
-              }),
-              nextId - 1
-            );
-            setNextId(maxId + 1);
             return updated;
           });
         }
@@ -428,7 +373,7 @@ export default function InputPage() {
       // 서버 액션 호출하여 DB에 일괄 저장
       const result = await saveTopics(dataToSave);
       
-      if (result.success && result.ids) {
+      if (result.success) {
         // 초기화
         setGridData([]);
         setParseError('');
@@ -632,7 +577,6 @@ export default function InputPage() {
                     ref={bulkGridRef}
                     data={gridData}
                     columns={[
-                      { title: 'ID', field: 'id', width: 100 },
                       { 
                         title: '중요도', 
                         field: 'importance', 

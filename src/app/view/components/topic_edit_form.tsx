@@ -158,7 +158,6 @@ const categoryL2Options: Record<string, string[]> = {
 
 interface TopicEditFormProps {
   topic: {
-    id: number;
     topics?: string;
     topics_eng?: string;
     topics_loc?: string;
@@ -182,6 +181,9 @@ export function TopicEditForm({ topic, onClose, onSave }: TopicEditFormProps) {
   const isDark = theme === 'dark';
   
   const [isDescriptionModalOpen, setIsDescriptionModalOpen] = useState(false);
+  
+  // 변경 전 토픽 이름 저장 (PK 역할)
+  const originalTopicName = topic.topic;
   
   const [formData, setFormData] = useState({
     topics: topic.topics || '',
@@ -210,7 +212,7 @@ export function TopicEditForm({ topic, onClose, onSave }: TopicEditFormProps) {
 
     setIsSaving(true);
     try {
-      const result = await updateTopic(topic.id, formData);
+      const result = await updateTopic(originalTopicName, formData);
       if (result.success) {
         alert('저장되었습니다.');
         onClose();

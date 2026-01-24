@@ -7,7 +7,6 @@ import { useRouter } from 'next/navigation';
 import { useTheme } from '@/common/hooks/useTheme';
 
 interface TopicData {
-  id: number;
   topic: string;
   topics_eng?: string;
   topics_loc?: string;
@@ -28,7 +27,7 @@ export default function StudyPage() {
   const [loading, setLoading] = useState<boolean>(false);
   const [studyMode, setStudyMode] = useState<'random' | 'sequential'>('random');
   const [studyPattern, setStudyPattern] = useState<'full' | 'select_definition' | 'find_topic'>('full');
-  const [studiedTopics, setStudiedTopics] = useState<Set<number>>(new Set());
+  const [studiedTopics, setStudiedTopics] = useState<Set<string>>(new Set());
   const [choiceCount, setChoiceCount] = useState<number>(3); // 선택지 개수 (2, 3, 5)
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
   const [showAnswer, setShowAnswer] = useState<boolean>(false);
@@ -76,7 +75,7 @@ export default function StudyPage() {
   const getCurrentTopic = () => {
     if (filteredTopics.length === 0) return null;
     if (studyMode === 'random') {
-      const availableTopics = filteredTopics.filter(t => !studiedTopics.has(t.id));
+      const availableTopics = filteredTopics.filter(t => !studiedTopics.has(t.topic));
       if (availableTopics.length === 0) {
         setStudiedTopics(new Set());
         return filteredTopics[Math.floor(Math.random() * filteredTopics.length)];
@@ -91,7 +90,7 @@ export default function StudyPage() {
     if (studyPattern === 'select_definition') {
       // 정의 선택: 정답 1개 + 오답 (choiceCount - 1)개
       const wrongTopics = filteredTopics
-        .filter(t => t.id !== correctTopic.id && t.definition)
+        .filter(t => t.topic !== correctTopic.topic && t.definition)
         .sort(() => Math.random() - 0.5)
         .slice(0, choiceCount - 1);
       const allChoices = [correctTopic, ...wrongTopics].sort(() => Math.random() - 0.5);
@@ -99,7 +98,7 @@ export default function StudyPage() {
     } else if (studyPattern === 'find_topic') {
       // 토픽명 찾기: 정답 1개 + 오답 (choiceCount - 1)개
       const wrongTopics = filteredTopics
-        .filter(t => t.id !== correctTopic.id && t.topic)
+        .filter(t => t.topic !== correctTopic.topic && t.topic)
         .sort(() => Math.random() - 0.5)
         .slice(0, choiceCount - 1);
       const allChoices = [correctTopic, ...wrongTopics].sort(() => Math.random() - 0.5);
@@ -131,7 +130,7 @@ export default function StudyPage() {
       if (current) {
         setStudiedTopics(prev => {
           const newSet = new Set(prev);
-          newSet.add(current.id);
+          newSet.add(current.topic);
           return newSet;
         });
       }
@@ -170,7 +169,7 @@ export default function StudyPage() {
     
     // 선택한 답이 정답인지 확인 (저장된 currentTopicState 사용)
     const selectedOption = choiceOptions[index];
-    const isCorrect = selectedOption && selectedOption.id === currentTopicState?.id;
+    const isCorrect = selectedOption && selectedOption.topic === currentTopicState?.topic;
     
     // 정답을 클릭한 경우 1초 후 자동으로 다음으로 넘어감
     if (isCorrect) {
@@ -569,7 +568,7 @@ export default function StudyPage() {
             </div>
           ) : currentTopic ? (
             <motion.div
-              key={currentTopic.id}
+              key={currentTopic.topic}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.4 }}
@@ -678,11 +677,11 @@ export default function StudyPage() {
                     </h3>
                     <div className="space-y-2">
                       {choiceOptions.map((option, index) => {
-                        const isCorrect = option.id === currentTopic.id;
+                        const isCorrect = option.topic === currentTopic.topic;
                         const isSelected = selectedAnswer === index;
                         return (
                           <button
-                            key={option.id}
+                            key={option.topic}
                             onClick={() => handleChoiceSelect(index)}
                             disabled={showAnswer}
                             className={`w-full p-4 rounded-lg border-2 text-left transition-all ${
@@ -747,11 +746,11 @@ export default function StudyPage() {
                     </h3>
                     <div className="space-y-2">
                       {choiceOptions.map((option, index) => {
-                        const isCorrect = option.id === currentTopic.id;
+                        const isCorrect = option.topic === currentTopic.topic;
                         const isSelected = selectedAnswer === index;
                         return (
                           <button
-                            key={option.id}
+                            key={option.topic}
                             onClick={() => handleChoiceSelect(index)}
                             disabled={showAnswer}
                             className={`w-full p-4 rounded-lg border-2 text-left transition-all ${

@@ -21,7 +21,6 @@ export async function saveTopic(item: Omit<StudyItem, 'id' | 'no'>) {
             cheatsheet,
             additional_info
           ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-          RETURNING id
         `;
 
         const values = [
@@ -39,11 +38,10 @@ export async function saveTopic(item: Omit<StudyItem, 'id' | 'no'>) {
           item.additional_info || null,
         ];
 
-    const result = await pool.query(query, values);
+    await pool.query(query, values);
     
     return {
       success: true,
-      id: result.rows[0].id,
     };
   } catch (error) {
     console.error('Error saving topic:', error);
@@ -62,7 +60,6 @@ export async function saveTopics(items: Omit<StudyItem, 'id' | 'no'>[]) {
     try {
       await client.query('BEGIN');
       
-      const results = [];
       for (const item of items) {
         const query = `
           INSERT INTO topics (
@@ -79,7 +76,6 @@ export async function saveTopics(items: Omit<StudyItem, 'id' | 'no'>[]) {
             cheatsheet,
             additional_info
           ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-          RETURNING id
         `;
 
         const values = [
@@ -97,15 +93,13 @@ export async function saveTopics(items: Omit<StudyItem, 'id' | 'no'>[]) {
           item.additional_info || null,
         ];
 
-        const result = await client.query(query, values);
-        results.push(result.rows[0].id);
+        await client.query(query, values);
       }
       
       await client.query('COMMIT');
       
       return {
         success: true,
-        ids: results,
       };
     } catch (error) {
       await client.query('ROLLBACK');
@@ -123,7 +117,8 @@ export async function saveTopics(items: Omit<StudyItem, 'id' | 'no'>[]) {
 }
 
 // 토픽 업데이트
-export async function updateTopic(id: number, item: Partial<Omit<StudyItem, 'id' | 'no'>>) {
+// 식별자로 originalTopic 사용 (토픽 이름이 변경될 수 있으므로)
+export async function updateTopic(originalTopic: string, item: Partial<Omit<StudyItem, 'id' | 'no'>>) {
   try {
     const fields: string[] = [];
     const values: any[] = [];
@@ -182,19 +177,17 @@ export async function updateTopic(id: number, item: Partial<Omit<StudyItem, 'id'
       return { success: false, error: 'No fields to update' };
     }
 
-    values.push(id);
+    values.push(originalTopic);
     const query = `
       UPDATE topics
       SET ${fields.join(', ')}
-      WHERE id = $${paramIndex}
-      RETURNING id
+      WHERE topic = $${paramIndex}
     `;
 
-    const result = await pool.query(query, values);
+    await pool.query(query, values);
     
     return {
       success: true,
-      id: result.rows[0].id,
     };
   } catch (error) {
     console.error('Error updating topic:', error);
@@ -206,39 +199,18 @@ export async function updateTopic(id: number, item: Partial<Omit<StudyItem, 'id'
 }
 
 // 토픽 삭제
-export async function deleteTopic(id: number) {
+export async function deleteTopic(topic: string) {
   try {
-    const query = 'DELETE FROM topics WHERE id = $1 RETURNING id';
-    const result = await pool.query(query, [id]);
+    const query = 'DELETE FROM topics WHERE topic = $1';
+    await pool.query(query, [topic]);
     
     return {
       success: true,
-      id: result.rows[0]?.id,
     };
   } catch (error) {
     console.error('Error deleting topic:', error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Unknown error',
-    };
-  }
-}
-
-// 최대 ID 조회
-export async function getMaxId() {
-  try {
-    const query = 'SELECT COALESCE(MAX(id), 0) as max_id FROM topics';
-    const result = await pool.query(query);
-    
-    return {
-      success: true,
-      maxId: parseInt(result.rows[0]?.max_id || '0', 10),
-    };
-  } catch (error) {
-    console.error('Error getting max id:', error);
-    return {
-      success: false,
-      maxId: 0,
       error: error instanceof Error ? error.message : 'Unknown error',
     };
   }

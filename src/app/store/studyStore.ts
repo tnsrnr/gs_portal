@@ -2,13 +2,16 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { TabData, StudyItem } from '../types';
 
+// 클라이언트 스토어용 아이템 타입 (DB 타입 + 식별자)
+type StoreItem = StudyItem & { id: string; no: number };
+
 interface StudyStore {
   tabs: TabData[];
   activeTabId: string | null;
   addTab: (name: string) => void;
   removeTab: (tabId: string) => void;
   updateTabName: (tabId: string, name: string) => void;
-  addItem: (tabId: string, item: Omit<StudyItem, 'id' | 'no'>) => void;
+  addItem: (tabId: string, item: StudyItem) => void;
   updateItem: (tabId: string, itemId: string, item: Partial<StudyItem>) => void;
   removeItem: (tabId: string, itemId: string) => void;
   setActiveTab: (tabId: string | null) => void;
@@ -56,12 +59,12 @@ export const useStudyStore = create<StudyStore>()(
     }));
   },
   
-  addItem: (tabId: string, item: Omit<StudyItem, 'id' | 'no'>) => {
+  addItem: (tabId: string, item: StudyItem) => {
     set((state) => {
       const tab = state.tabs.find((t) => t.id === tabId);
       if (!tab) return state;
       
-      const newItem: StudyItem = {
+      const newItem: StoreItem = {
         ...item,
         id: Date.now().toString(),
         no: tab.items.length + 1,
@@ -117,4 +120,3 @@ export const useStudyStore = create<StudyStore>()(
     }
   )
 );
-
