@@ -1,10 +1,14 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { ArrowLeft, BookOpen, Eye, EyeOff, RotateCcw, ChevronLeft, ChevronRight } from "lucide-react";
+import { useState, useEffect, useRef } from 'react';
+import { ArrowLeft, BookOpen, Eye, EyeOff, RotateCcw, ChevronLeft, ChevronRight, Edit, Save, X } from "lucide-react";
 import { motion } from "framer-motion";
 import { useRouter } from 'next/navigation';
 import { useTheme } from '@/common/hooks/useTheme';
+import { Dialog, DialogContent } from '@/common/components/ui/dialog';
+import { TopicEditForm } from '@/app/view/components/topic_edit_form';
+import { updateTopic } from '@/app/actions/topics';
+import { Textarea } from '@/common/components/ui/textarea';
 
 interface TopicData {
   topic: string;
@@ -25,7 +29,7 @@ export default function StudyPage() {
   const [currentIndex, setCurrentIndex] = useState<number>(0);
   const [showCheatsheet, setShowCheatsheet] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(false);
-  const [studyMode, setStudyMode] = useState<'random' | 'sequential'>('random');
+  const [studyMode, setStudyMode] = useState<'random' | 'sequential'>('sequential');
   const [studyPattern, setStudyPattern] = useState<'full' | 'select_definition' | 'find_topic'>('full');
   const [studiedTopics, setStudiedTopics] = useState<Set<string>>(new Set());
   const [choiceCount, setChoiceCount] = useState<number>(3); // 선택지 개수 (2, 3, 5)
@@ -35,6 +39,11 @@ export default function StudyPage() {
   const [currentTopicState, setCurrentTopicState] = useState<TopicData | null>(null);
   const [showSettings, setShowSettings] = useState<boolean>(true); // 설정 화면 표시 여부
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]); // 선택된 대분류 (멀티 선택)
+  const [isEditModalOpen, setIsEditModalOpen] = useState<boolean>(false); // 수정 모달 표시 여부
+  const [editingField, setEditingField] = useState<string | null>(null); // 편집 중인 필드명
+  const [editValue, setEditValue] = useState<string>(''); // 편집 중인 값
+  const [isSaving, setIsSaving] = useState<boolean>(false); // 저장 중 여부
+  const editInputRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     fetchTopics();
@@ -160,6 +169,61 @@ export default function StudyPage() {
     setShowCheatsheet(false);
     setSelectedAnswer(null);
     setShowAnswer(false);
+  };
+
+  // 인라인 편집 시작
+  const startEdit = (field: string, currentValue: string) => {
+    setEditingField(field);
+    setEditValue(currentValue || '');
+    setTimeout(() => {
+      editInputRef.current?.focus();
+    }, 0);
+  };
+
+  // 인라인 편집 취소
+  const cancelEdit = () => {
+    setEditingField(null);
+    setEditValue('');
+  };
+
+  // 인라인 편집 저장
+  const saveEdit = async () => {
+    if (!currentTopic || !editingField) return;
+
+    setIsSaving(true);
+    try {
+      const updateData: Partial<TopicData> = {};
+      updateData[editingField as keyof TopicData] = editValue as any;
+
+      const result = await updateTopic(currentTopic.topic, updateData);
+      if (result.success) {
+        // 로컬 상태 업데이트
+        setCurrentTopicState(prev => prev ? { ...prev, [editingField]: editValue } : null);
+        // 전체 토픽 목록도 업데이트
+        setTopics(prev => prev.map(t => 
+          t.topic === currentTopic.topic ? { ...t, [editingField]: editValue } : t
+        ));
+        setEditingField(null);
+        setEditValue('');
+      } else {
+        alert(`저장 실패: ${result.error || '알 수 없는 오류'}`);
+      }
+    } catch (error) {
+      console.error('Error updating topic:', error);
+      alert('저장 중 오류가 발생했습니다.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // 엔터키로 저장 (Shift+Enter는 줄바꿈)
+  const handleEditKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      saveEdit();
+    } else if (e.key === 'Escape') {
+      cancelEdit();
+    }
   };
 
   const handleChoiceSelect = (index: number) => {
@@ -379,16 +443,6 @@ export default function StudyPage() {
                     </span>
                     <div className="flex gap-2">
                       <button
-                        onClick={() => setStudyMode('random')}
-                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                          studyMode === 'random' 
-                            ? 'bg-green-600 text-white' 
-                            : theme === 'dark' ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
-                        }`}
-                      >
-                        랜덤
-                      </button>
-                      <button
                         onClick={() => setStudyMode('sequential')}
                         className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                           studyMode === 'sequential' 
@@ -397,6 +451,16 @@ export default function StudyPage() {
                         }`}
                       >
                         순차
+                      </button>
+                      <button
+                        onClick={() => setStudyMode('random')}
+                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                          studyMode === 'random' 
+                            ? 'bg-green-600 text-white' 
+                            : theme === 'dark' ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
+                        }`}
+                      >
+                        랜덤
                       </button>
                     </div>
                     {/* 선택지 개수 설정 (패턴 2, 3일 때만) */}
@@ -587,11 +651,55 @@ export default function StudyPage() {
                 {(studyPattern === 'full' || studyPattern === 'select_definition') && (
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-1">
                         <BookOpen className="w-5 h-5" style={{ color: 'var(--accent-blue)' }} />
-                        <h2 className="text-xl font-bold" style={{ color: 'var(--text-primary)' }}>
-                          {currentTopic.topic}
-                        </h2>
+                        {editingField === 'topic' ? (
+                          <div className="flex items-center gap-2 flex-1">
+                            <input
+                              ref={editInputRef as any}
+                              type="text"
+                              value={editValue}
+                              onChange={(e) => setEditValue(e.target.value)}
+                              onKeyDown={handleEditKeyDown}
+                              className="flex-1 px-3 py-1 rounded border text-xl font-bold"
+                              style={{
+                                background: 'var(--bg-card)',
+                                borderColor: 'var(--border-color)',
+                                color: 'var(--text-primary)'
+                              }}
+                              disabled={isSaving}
+                            />
+                            <motion.button
+                              whileHover={{ scale: 1.05 }}
+                              whileTap={{ scale: 0.95 }}
+                              onClick={saveEdit}
+                              disabled={isSaving}
+                              className="p-1 rounded"
+                              style={{ color: 'var(--accent-blue)' }}
+                            >
+                              <Save className="w-4 h-4" />
+                            </motion.button>
+                            <motion.button
+                              whileHover={{ scale: 1.05 }}
+                              whileTap={{ scale: 0.95 }}
+                              onClick={cancelEdit}
+                              disabled={isSaving}
+                              className="p-1 rounded"
+                              style={{ color: 'var(--text-secondary)' }}
+                            >
+                              <X className="w-4 h-4" />
+                            </motion.button>
+                          </div>
+                        ) : (
+                          <h2 
+                            className="text-xl font-bold cursor-pointer hover:opacity-70 transition-opacity" 
+                            style={{ color: 'var(--text-primary)' }}
+                            onDoubleClick={() => startEdit('topic', currentTopic.topic)}
+                            title="더블클릭하여 수정"
+                          >
+                            {currentTopic.topic}
+                          </h2>
+                        )}
                         {currentTopic.importance && (
                           <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                             currentTopic.importance === '상' ? 'bg-red-100 text-red-800' :
@@ -603,6 +711,28 @@ export default function StudyPage() {
                         )}
                       </div>
                       <div className="flex items-center gap-2">
+                        <motion.button
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                          onClick={() => setIsEditModalOpen(true)}
+                          className="p-2 rounded-lg border transition-colors"
+                          style={{
+                            background: 'var(--bg-tertiary)',
+                            borderColor: 'var(--border-color)',
+                            color: 'var(--text-secondary)'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.background = 'var(--bg-card)';
+                            e.currentTarget.style.color = 'var(--text-primary)';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.background = 'var(--bg-tertiary)';
+                            e.currentTarget.style.color = 'var(--text-secondary)';
+                          }}
+                          title="수정"
+                        >
+                          <Edit className="w-4 h-4" />
+                        </motion.button>
                         {currentTopic.category_l1 && (
                           <span className="px-2 py-1 rounded text-xs" style={{ background: 'var(--bg-tertiary)', color: 'var(--text-secondary)' }}>
                             {currentTopic.category_l1}
@@ -637,6 +767,28 @@ export default function StudyPage() {
                         </h2>
                       </div>
                       <div className="flex items-center gap-2">
+                        <motion.button
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                          onClick={() => setIsEditModalOpen(true)}
+                          className="p-2 rounded-lg border transition-colors"
+                          style={{
+                            background: 'var(--bg-tertiary)',
+                            borderColor: 'var(--border-color)',
+                            color: 'var(--text-secondary)'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.background = 'var(--bg-card)';
+                            e.currentTarget.style.color = 'var(--text-primary)';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.background = 'var(--bg-tertiary)';
+                            e.currentTarget.style.color = 'var(--text-secondary)';
+                          }}
+                          title="수정"
+                        >
+                          <Edit className="w-4 h-4" />
+                        </motion.button>
                         {currentTopic.category_l1 && (
                           <span className="px-2 py-1 rounded text-xs" style={{ background: 'var(--bg-tertiary)', color: 'var(--text-secondary)' }}>
                             {currentTopic.category_l1}
@@ -656,14 +808,68 @@ export default function StudyPage() {
                 {studyPattern === 'full' && (
                   <>
                     {/* 정의 영역 - 항상 표시 */}
-                    {currentTopic.definition && (
+                    {currentTopic.definition !== undefined && (
                       <div className="border-t pt-4" style={{ borderColor: 'var(--border-color)' }}>
                         <h3 className="font-semibold mb-2" style={{ color: 'var(--text-primary)' }}>정의</h3>
-                        <div className="p-3 rounded" style={{ background: 'var(--bg-tertiary)' }}>
-                          <p className="text-sm whitespace-pre-wrap" style={{ color: 'var(--text-primary)' }}>
-                            {currentTopic.definition}
-                          </p>
-                        </div>
+                        {editingField === 'definition' ? (
+                          <div className="space-y-2">
+                            <Textarea
+                              ref={editInputRef}
+                              value={editValue}
+                              onChange={(e) => setEditValue(e.target.value)}
+                              onKeyDown={handleEditKeyDown}
+                              className="w-full min-h-[120px]"
+                              style={{
+                                background: 'var(--bg-card)',
+                                borderColor: 'var(--border-color)',
+                                color: 'var(--text-primary)'
+                              }}
+                              disabled={isSaving}
+                            />
+                            <div className="flex gap-2 justify-end">
+                              <motion.button
+                                whileHover={{ scale: 1.05 }}
+                                whileTap={{ scale: 0.95 }}
+                                onClick={saveEdit}
+                                disabled={isSaving}
+                                className="px-3 py-1 rounded flex items-center gap-1 text-sm"
+                                style={{
+                                  background: 'var(--accent-blue)',
+                                  color: 'white'
+                                }}
+                              >
+                                <Save className="w-3 h-3" />
+                                저장
+                              </motion.button>
+                              <motion.button
+                                whileHover={{ scale: 1.05 }}
+                                whileTap={{ scale: 0.95 }}
+                                onClick={cancelEdit}
+                                disabled={isSaving}
+                                className="px-3 py-1 rounded flex items-center gap-1 text-sm border"
+                                style={{
+                                  background: 'var(--bg-tertiary)',
+                                  borderColor: 'var(--border-color)',
+                                  color: 'var(--text-secondary)'
+                                }}
+                              >
+                                <X className="w-3 h-3" />
+                                취소
+                              </motion.button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div 
+                            className="p-3 rounded cursor-pointer hover:opacity-70 transition-opacity" 
+                            style={{ background: 'var(--bg-tertiary)' }}
+                            onDoubleClick={() => startEdit('definition', currentTopic.definition || '')}
+                            title="더블클릭하여 수정"
+                          >
+                            <p className="text-sm whitespace-pre-wrap" style={{ color: 'var(--text-primary)' }}>
+                              {currentTopic.definition || '(정의 없음)'}
+                            </p>
+                          </div>
+                        )}
                       </div>
                     )}
                   </>
@@ -733,14 +939,68 @@ export default function StudyPage() {
                 )}
 
                 {/* 패턴 3: 토픽 찾기 */}
-                {studyPattern === 'find_topic' && currentTopic.definition && (
+                {studyPattern === 'find_topic' && currentTopic.definition !== undefined && (
                   <div className="border-t pt-4" style={{ borderColor: 'var(--border-color)' }}>
                     <h3 className="font-semibold mb-2" style={{ color: 'var(--text-primary)' }}>정의</h3>
-                    <div className="p-3 rounded mb-4" style={{ background: 'var(--bg-tertiary)' }}>
-                      <p className="text-sm whitespace-pre-wrap" style={{ color: 'var(--text-primary)' }}>
-                        {currentTopic.definition}
-                      </p>
-                    </div>
+                    {editingField === 'definition' ? (
+                      <div className="space-y-2 mb-4">
+                        <Textarea
+                          ref={editInputRef}
+                          value={editValue}
+                          onChange={(e) => setEditValue(e.target.value)}
+                          onKeyDown={handleEditKeyDown}
+                          className="w-full min-h-[120px]"
+                          style={{
+                            background: 'var(--bg-card)',
+                            borderColor: 'var(--border-color)',
+                            color: 'var(--text-primary)'
+                          }}
+                          disabled={isSaving}
+                        />
+                        <div className="flex gap-2 justify-end">
+                          <motion.button
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                            onClick={saveEdit}
+                            disabled={isSaving}
+                            className="px-3 py-1 rounded flex items-center gap-1 text-sm"
+                            style={{
+                              background: 'var(--accent-blue)',
+                              color: 'white'
+                            }}
+                          >
+                            <Save className="w-3 h-3" />
+                            저장
+                          </motion.button>
+                          <motion.button
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                            onClick={cancelEdit}
+                            disabled={isSaving}
+                            className="px-3 py-1 rounded flex items-center gap-1 text-sm border"
+                            style={{
+                              background: 'var(--bg-tertiary)',
+                              borderColor: 'var(--border-color)',
+                              color: 'var(--text-secondary)'
+                            }}
+                          >
+                            <X className="w-3 h-3" />
+                            취소
+                          </motion.button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div 
+                        className="p-3 rounded mb-4 cursor-pointer hover:opacity-70 transition-opacity" 
+                        style={{ background: 'var(--bg-tertiary)' }}
+                        onDoubleClick={() => startEdit('definition', currentTopic.definition || '')}
+                        title="더블클릭하여 수정"
+                      >
+                        <p className="text-sm whitespace-pre-wrap" style={{ color: 'var(--text-primary)' }}>
+                          {currentTopic.definition || '(정의 없음)'}
+                        </p>
+                      </div>
+                    )}
                     <h3 className="font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>
                       위 정의에 해당하는 토픽을 선택하세요
                     </h3>
@@ -807,7 +1067,7 @@ export default function StudyPage() {
                 )}
 
                 {/* 두음 영역 */}
-                {currentTopic.cheatsheet && (
+                {currentTopic.cheatsheet !== undefined && (
                   <div className="border-t pt-4" style={{ borderColor: 'var(--border-color)' }}>
                     <div className="flex items-center justify-between mb-2">
                       <h3 className="font-semibold" style={{ color: 'var(--text-primary)' }}>두음</h3>
@@ -834,26 +1094,134 @@ export default function StudyPage() {
                         initial={{ opacity: 0, height: 0 }}
                         animate={{ opacity: 1, height: 'auto' }}
                         exit={{ opacity: 0, height: 0 }}
-                        className="p-3 rounded"
-                        style={{ background: 'var(--bg-tertiary)' }}
                       >
-                        <p className="text-sm whitespace-pre-wrap" style={{ color: 'var(--text-primary)' }}>
-                          {currentTopic.cheatsheet}
-                        </p>
+                        {editingField === 'cheatsheet' ? (
+                          <div className="space-y-2">
+                            <Textarea
+                              ref={editInputRef}
+                              value={editValue}
+                              onChange={(e) => setEditValue(e.target.value)}
+                              onKeyDown={handleEditKeyDown}
+                              className="w-full min-h-[120px]"
+                              style={{
+                                background: 'var(--bg-card)',
+                                borderColor: 'var(--border-color)',
+                                color: 'var(--text-primary)'
+                              }}
+                              disabled={isSaving}
+                            />
+                            <div className="flex gap-2 justify-end">
+                              <motion.button
+                                whileHover={{ scale: 1.05 }}
+                                whileTap={{ scale: 0.95 }}
+                                onClick={saveEdit}
+                                disabled={isSaving}
+                                className="px-3 py-1 rounded flex items-center gap-1 text-sm"
+                                style={{
+                                  background: 'var(--accent-blue)',
+                                  color: 'white'
+                                }}
+                              >
+                                <Save className="w-3 h-3" />
+                                저장
+                              </motion.button>
+                              <motion.button
+                                whileHover={{ scale: 1.05 }}
+                                whileTap={{ scale: 0.95 }}
+                                onClick={cancelEdit}
+                                disabled={isSaving}
+                                className="px-3 py-1 rounded flex items-center gap-1 text-sm border"
+                                style={{
+                                  background: 'var(--bg-tertiary)',
+                                  borderColor: 'var(--border-color)',
+                                  color: 'var(--text-secondary)'
+                                }}
+                              >
+                                <X className="w-3 h-3" />
+                                취소
+                              </motion.button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div 
+                            className="p-3 rounded cursor-pointer hover:opacity-70 transition-opacity" 
+                            style={{ background: 'var(--bg-tertiary)' }}
+                            onDoubleClick={() => startEdit('cheatsheet', currentTopic.cheatsheet || '')}
+                            title="더블클릭하여 수정"
+                          >
+                            <p className="text-sm whitespace-pre-wrap" style={{ color: 'var(--text-primary)' }}>
+                              {currentTopic.cheatsheet || '(두음 없음)'}
+                            </p>
+                          </div>
+                        )}
                       </motion.div>
                     )}
                   </div>
                 )}
 
                 {/* 설명 영역 */}
-                {currentTopic.additional_info && (
+                {currentTopic.additional_info !== undefined && (
                   <div className="border-t pt-4" style={{ borderColor: 'var(--border-color)' }}>
                     <h3 className="font-semibold mb-2" style={{ color: 'var(--text-primary)' }}>설명</h3>
-                    <div className="p-3 rounded" style={{ background: 'var(--bg-tertiary)' }}>
-                      <p className="text-sm whitespace-pre-wrap" style={{ color: 'var(--text-primary)' }}>
-                        {currentTopic.additional_info}
-                      </p>
-                    </div>
+                    {editingField === 'additional_info' ? (
+                      <div className="space-y-2">
+                        <Textarea
+                          ref={editInputRef}
+                          value={editValue}
+                          onChange={(e) => setEditValue(e.target.value)}
+                          onKeyDown={handleEditKeyDown}
+                          className="w-full min-h-[120px]"
+                          style={{
+                            background: 'var(--bg-card)',
+                            borderColor: 'var(--border-color)',
+                            color: 'var(--text-primary)'
+                          }}
+                          disabled={isSaving}
+                        />
+                        <div className="flex gap-2 justify-end">
+                          <motion.button
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                            onClick={saveEdit}
+                            disabled={isSaving}
+                            className="px-3 py-1 rounded flex items-center gap-1 text-sm"
+                            style={{
+                              background: 'var(--accent-blue)',
+                              color: 'white'
+                            }}
+                          >
+                            <Save className="w-3 h-3" />
+                            저장
+                          </motion.button>
+                          <motion.button
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                            onClick={cancelEdit}
+                            disabled={isSaving}
+                            className="px-3 py-1 rounded flex items-center gap-1 text-sm border"
+                            style={{
+                              background: 'var(--bg-tertiary)',
+                              borderColor: 'var(--border-color)',
+                              color: 'var(--text-secondary)'
+                            }}
+                          >
+                            <X className="w-3 h-3" />
+                            취소
+                          </motion.button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div 
+                        className="p-3 rounded cursor-pointer hover:opacity-70 transition-opacity" 
+                        style={{ background: 'var(--bg-tertiary)' }}
+                        onDoubleClick={() => startEdit('additional_info', currentTopic.additional_info || '')}
+                        title="더블클릭하여 수정"
+                      >
+                        <p className="text-sm whitespace-pre-wrap" style={{ color: 'var(--text-primary)' }}>
+                          {currentTopic.additional_info || '(설명 없음)'}
+                        </p>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -909,6 +1277,33 @@ export default function StudyPage() {
               <p style={{ color: 'var(--text-secondary)' }}>학습할 토픽이 없습니다.</p>
             </div>
           )}
+
+          {/* 수정 모달 */}
+          <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
+            <DialogContent 
+              className="max-h-[90vh] overflow-y-auto p-6"
+              style={{
+                background: 'var(--bg-card)',
+                borderColor: 'var(--border-color)',
+                maxWidth: 'calc(56rem * 1.2)',
+                width: 'calc(56rem * 1.2)'
+              }}
+            >
+              {currentTopic && (
+                <TopicEditForm
+                  topic={currentTopic}
+                  onClose={() => {
+                    setIsEditModalOpen(false);
+                  }}
+                  onSave={() => {
+                    // 저장 후 데이터 새로고침
+                    fetchTopics();
+                    setIsEditModalOpen(false);
+                  }}
+                />
+              )}
+            </DialogContent>
+          </Dialog>
             </>
           )}
         </div>
