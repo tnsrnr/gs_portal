@@ -44,6 +44,10 @@ export default function StudyPage() {
   const [editValue, setEditValue] = useState<string>(''); // 편집 중인 값
   const [isSaving, setIsSaving] = useState<boolean>(false); // 저장 중 여부
   const editInputRef = useRef<HTMLTextAreaElement>(null);
+  
+  // 학습 세션 추적
+  const [studyStartTime, setStudyStartTime] = useState<Date | null>(null); // 학습 시작 시간
+  const [showCompletionModal, setShowCompletionModal] = useState<boolean>(false); // 완료 모달 표시
 
   useEffect(() => {
     fetchTopics();
@@ -144,14 +148,32 @@ export default function StudyPage() {
         });
       }
       setShowCheatsheet(false);
+      
+      // 학습 완료 체크
+      const availableTopics = filteredTopics.filter(t => !studiedTopics.has(t.topic));
+      if (availableTopics.length === 0) {
+        handleStudyComplete();
+        return;
+      }
     } else {
       if (currentIndex < filteredTopics.length - 1) {
         setCurrentIndex(prev => prev + 1);
+      } else {
+        // 마지막 토픽 완료
+        handleStudyComplete();
+        return;
       }
       setShowCheatsheet(false);
     }
     setSelectedAnswer(null);
     setShowAnswer(false);
+  };
+
+  // 학습 완료 처리
+  const handleStudyComplete = () => {
+    if (!studyStartTime) return;
+    
+    setShowCompletionModal(true);
   };
 
   const handlePrev = () => {
@@ -500,6 +522,8 @@ export default function StudyPage() {
                         setShowSettings(false);
                         setCurrentIndex(0);
                         setStudiedTopics(new Set());
+                        // 학습 시작 시간 기록
+                        setStudyStartTime(new Date());
                       }
                     }}
                     disabled={filteredTopics.length === 0}
@@ -545,9 +569,6 @@ export default function StudyPage() {
                   <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
                     토픽 학습
                   </h1>
-                  <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-                    {filteredTopics.length > 0 ? `총 ${filteredTopics.length}개의 토픽` : '토픽 데이터를 불러오는 중...'}
-                  </p>
                 </div>
               </div>
 
@@ -574,56 +595,6 @@ export default function StudyPage() {
             </div>
           )}
 
-          {/* 학습 완료 메시지 */}
-          {!loading && filteredTopics.length > 0 && (
-            (studyMode === 'random' && studiedTopics.size >= filteredTopics.length) ||
-            (studyMode === 'sequential' && currentIndex >= filteredTopics.length - 1)
-          ) && (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.3 }}
-              className="mb-4 p-6 rounded-lg border text-center"
-              style={{
-                background: 'var(--bg-card)',
-                borderColor: 'var(--border-color)'
-              }}
-            >
-              <div className="text-4xl mb-2">🎉</div>
-              <h2 className="text-2xl font-bold mb-2" style={{ color: 'var(--text-primary)' }}>
-                학습 완료!
-              </h2>
-              <p className="text-sm mb-4" style={{ color: 'var(--text-secondary)' }}>
-                선택한 대분류의 모든 토픽을 학습했습니다.
-              </p>
-              <div className="flex gap-2 justify-center">
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => setShowSettings(true)}
-                  className="px-6 py-2 rounded-lg font-medium border"
-                  style={{
-                    background: 'var(--bg-tertiary)',
-                    borderColor: 'var(--border-color)',
-                    color: 'var(--text-secondary)'
-                  }}
-                >
-                  다시 학습하기
-                </motion.button>
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={handleReset}
-                  className="px-6 py-2 rounded-lg font-medium text-white"
-                  style={{
-                    background: 'linear-gradient(135deg, rgba(147, 51, 234, 0.8) 0%, rgba(168, 85, 247, 0.8) 100%)'
-                  }}
-                >
-                  처음부터 다시
-                </motion.button>
-              </div>
-            </motion.div>
-          )}
 
           {/* 학습 카드 */}
           {loading ? (
@@ -1226,49 +1197,48 @@ export default function StudyPage() {
                 )}
               </div>
               {/* 컨트롤 버튼 - 고정 위치 */}
-              <div className="flex items-center justify-between pt-4 border-t mt-4 flex-shrink-0" style={{ borderColor: 'var(--border-color)' }}>
-                <div className="flex gap-2">
-                  {studyMode === 'sequential' && (
-                    <motion.button
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                      onClick={handlePrev}
-                      className="p-2 rounded-lg border"
-                      style={{
-                        background: 'var(--bg-tertiary)',
-                        borderColor: 'var(--border-color)',
-                        color: 'var(--text-secondary)'
-                      }}
-                    >
-                      <ChevronLeft className="w-5 h-5" />
-                    </motion.button>
-                  )}
+              <div className="flex items-center justify-end gap-2 pt-4 border-t mt-4 flex-shrink-0" style={{ borderColor: 'var(--border-color)' }}>
+                {studyMode === 'sequential' && (
                   <motion.button
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={handleReset}
-                    className="p-2 rounded-lg border"
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={handlePrev}
+                    className="px-4 py-2 rounded-lg font-medium border transition-colors"
                     style={{
-                      background: 'var(--bg-tertiary)',
+                      background: 'var(--bg-card)',
                       borderColor: 'var(--border-color)',
-                      color: 'var(--text-secondary)'
+                      color: 'var(--text-primary)'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = 'var(--bg-tertiary)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = 'var(--bg-card)';
                     }}
                   >
-                    <RotateCcw className="w-5 h-5" />
+                    <ChevronLeft className="w-4 h-4 inline-block mr-1" />
+                    이전
                   </motion.button>
-                </div>
+                )}
                 <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
                   onClick={handleNext}
-                  className="px-6 py-2 rounded-lg font-medium"
+                  className="px-4 py-2 rounded-lg font-medium border transition-colors"
                   style={{
-                    background: 'linear-gradient(135deg, rgba(147, 51, 234, 0.8) 0%, rgba(168, 85, 247, 0.8) 100%)',
-                    color: 'white'
+                    background: 'var(--bg-card)',
+                    borderColor: 'var(--border-color)',
+                    color: 'var(--text-primary)'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'var(--bg-tertiary)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'var(--bg-card)';
                   }}
                 >
                   다음
-                  <ChevronRight className="w-5 h-5 inline-block ml-2" />
+                  <ChevronRight className="w-4 h-4 inline-block ml-1" />
                 </motion.button>
               </div>
             </motion.div>
@@ -1304,6 +1274,53 @@ export default function StudyPage() {
               )}
             </DialogContent>
           </Dialog>
+
+          {/* 학습 완료 모달 */}
+          <Dialog open={showCompletionModal} onOpenChange={setShowCompletionModal}>
+            <DialogContent 
+              className="p-6"
+              style={{
+                background: 'var(--bg-card)',
+                borderColor: 'var(--border-color)',
+                maxWidth: '500px'
+              }}
+            >
+              <StudyCompletionForm
+                studyStartTime={studyStartTime}
+                selectedCategories={selectedCategories}
+                filteredTopics={filteredTopics}
+                onClose={() => {
+                  setShowCompletionModal(false);
+                  setShowSettings(true);
+                  setStudyStartTime(null);
+                }}
+                onSave={async (data) => {
+                  try {
+                    const response = await fetch('/api/study-sessions', {
+                      method: 'POST',
+                      headers: {
+                        'Content-Type': 'application/json',
+                      },
+                      body: JSON.stringify(data),
+                    });
+                    
+                    const result = await response.json();
+                    if (result.success) {
+                      setShowCompletionModal(false);
+                      setShowSettings(true);
+                      setStudyStartTime(null);
+                      alert('학습 세션이 저장되었습니다.');
+                    } else {
+                      alert(`저장 실패: ${result.error || '알 수 없는 오류'}`);
+                    }
+                  } catch (error) {
+                    console.error('Error saving study session:', error);
+                    alert('저장 중 오류가 발생했습니다.');
+                  }
+                }}
+              />
+            </DialogContent>
+          </Dialog>
             </>
           )}
         </div>
@@ -1312,3 +1329,199 @@ export default function StudyPage() {
   );
 }
 
+// 학습 완료 폼 컴포넌트
+function StudyCompletionForm({
+  studyStartTime,
+  selectedCategories,
+  filteredTopics,
+  onClose,
+  onSave
+}: {
+  studyStartTime: Date | null;
+  selectedCategories: string[];
+  filteredTopics: TopicData[];
+  onClose: () => void;
+  onSave: (data: { student_name: string; category_l1: string; study_duration: number; study_date: string }) => void;
+}) {
+  // 총 학습 시간 계산
+  const calculateStudyDuration = () => {
+    if (!studyStartTime) return 0;
+    
+    const endTime = new Date();
+    const totalDuration = Math.floor((endTime.getTime() - studyStartTime.getTime()) / 1000);
+    
+    return Math.max(0, totalDuration); // 음수 방지
+  };
+
+  // 대분류명 자동 설정
+  const getDefaultCategory = () => {
+    if (selectedCategories.length > 0) {
+      return selectedCategories[0];
+    }
+    if (filteredTopics.length > 0) {
+      return filteredTopics[0].category_l1;
+    }
+    return '전체';
+  };
+
+  // 오늘 날짜를 YYYY-MM-DD 형식으로 가져오기
+  const getTodayDate = () => {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  const [formData, setFormData] = useState({
+    studentName: 'ADMIN',
+    category_l1: getDefaultCategory(),
+    studyDuration: Math.floor(calculateStudyDuration() / 60), // 분 단위로 변환
+    studyDate: getTodayDate(), // 학습일자 (오늘 날짜 기본값)
+  });
+
+  // 학습 시간 실시간 업데이트
+  useEffect(() => {
+    if (studyStartTime) {
+      const interval = setInterval(() => {
+        const duration = calculateStudyDuration();
+        setFormData(prev => ({
+          ...prev,
+          studyDuration: Math.floor(duration / 60)
+        }));
+      }, 1000); // 1초마다 업데이트
+
+      return () => clearInterval(interval);
+    }
+  }, [studyStartTime]);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    // 초 단위로 변환
+    const submitData = {
+      student_name: formData.studentName,
+      category_l1: formData.category_l1,
+      study_duration: formData.studyDuration * 60,
+      study_date: formData.studyDate,
+    };
+    
+    onSave(submitData);
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div>
+        <h2 className="text-2xl font-bold mb-4" style={{ color: 'var(--text-primary)' }}>
+          학습 완료 🎉
+        </h2>
+        <p className="text-sm mb-4" style={{ color: 'var(--text-secondary)' }}>
+          학습 정보를 확인하고 저장하세요.
+        </p>
+      </div>
+
+      <div className="space-y-3">
+        <div>
+          <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-primary)' }}>
+            학습자명
+          </label>
+          <input
+            type="text"
+            value={formData.studentName}
+            onChange={(e) => setFormData({ ...formData, studentName: e.target.value })}
+            className="w-full px-3 py-2 rounded-lg border"
+            style={{
+              background: 'var(--bg-tertiary)',
+              borderColor: 'var(--border-color)',
+              color: 'var(--text-primary)'
+            }}
+            required
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-primary)' }}>
+            학습목록 (대분류)
+          </label>
+          <input
+            type="text"
+            value={formData.category_l1}
+            onChange={(e) => setFormData({ ...formData, category_l1: e.target.value })}
+            className="w-full px-3 py-2 rounded-lg border"
+            style={{
+              background: 'var(--bg-tertiary)',
+              borderColor: 'var(--border-color)',
+              color: 'var(--text-primary)'
+            }}
+            required
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-primary)' }}>
+            총 학습 시간 (분)
+          </label>
+          <input
+            type="number"
+            value={formData.studyDuration}
+            onChange={(e) => setFormData({ ...formData, studyDuration: parseInt(e.target.value) || 0 })}
+            className="w-full px-3 py-2 rounded-lg border"
+            style={{
+              background: 'var(--bg-tertiary)',
+              borderColor: 'var(--border-color)',
+              color: 'var(--text-primary)'
+            }}
+            min="0"
+            required
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-primary)' }}>
+            학습일자
+          </label>
+          <input
+            type="date"
+            value={formData.studyDate}
+            onChange={(e) => setFormData({ ...formData, studyDate: e.target.value })}
+            className="w-full px-3 py-2 rounded-lg border"
+            style={{
+              background: 'var(--bg-tertiary)',
+              borderColor: 'var(--border-color)',
+              color: 'var(--text-primary)'
+            }}
+            required
+          />
+        </div>
+      </div>
+
+      <div className="flex gap-2 justify-end pt-4">
+        <motion.button
+          type="button"
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+          onClick={onClose}
+          className="px-4 py-2 rounded-lg font-medium border"
+          style={{
+            background: 'var(--bg-tertiary)',
+            borderColor: 'var(--border-color)',
+            color: 'var(--text-secondary)'
+          }}
+        >
+          취소
+        </motion.button>
+        <motion.button
+          type="submit"
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+          className="px-4 py-2 rounded-lg font-medium text-white"
+          style={{
+            background: 'linear-gradient(135deg, rgba(147, 51, 234, 0.8) 0%, rgba(168, 85, 247, 0.8) 100%)'
+          }}
+        >
+          확인하기
+        </motion.button>
+      </div>
+    </form>
+  );
+}

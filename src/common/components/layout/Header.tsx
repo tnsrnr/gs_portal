@@ -11,7 +11,7 @@ function cn(...classes: Array<string | false | undefined | null>): string {
   return classes.filter(Boolean).join(' ');
 }
 
-import { Settings, LogOut, Sun, Moon, ChevronDown } from 'lucide-react';
+import { Settings, LogOut, Sun, Moon, ChevronDown, ChevronUp } from 'lucide-react';
 import { useTheme } from '@/common/hooks/useTheme';
 
 // 드롭다운 메뉴 아이템 컴포넌트
@@ -422,12 +422,24 @@ export function Header() {
   const router = useRouter();
   const [isClient, setIsClient] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(false);
   const { theme } = useTheme();
 
-  // 클라이언트 사이드 렌더링 보장
+  // 클라이언트 사이드 렌더링 보장 및 로컬 스토리지에서 접기 상태 불러오기
   useEffect(() => {
     setIsClient(true);
+    const savedCollapsed = localStorage.getItem('headerCollapsed');
+    if (savedCollapsed === 'true') {
+      setIsCollapsed(true);
+    }
   }, []);
+
+  // 접기 상태 변경 시 로컬 스토리지에 저장
+  const toggleCollapse = () => {
+    const newState = !isCollapsed;
+    setIsCollapsed(newState);
+    localStorage.setItem('headerCollapsed', String(newState));
+  };
 
   // 페이지 설정 제거 - 단순화
 
@@ -445,94 +457,128 @@ export function Header() {
   const visibleMenus = menuItems;
 
   return (
-    <header className="backdrop-blur-md shadow-xl border-none z-50 relative" style={{ 
-      background: 'var(--bg-primary)' 
-    }}>
+    <header 
+      className="backdrop-blur-md shadow-xl border-none z-50 relative transition-all duration-300"
+      style={{ 
+        background: 'var(--bg-primary)'
+      }}
+    >
       <div className="flex justify-between items-center px-3 py-2">
-        <div className="flex items-center space-x-4">
-          {/* IT학습자료 로고 */}
-          <Link href="/">
-            <div className="flex items-center gap-2">
-              {/* 아이콘 */}
-              <div 
-                className="relative w-10 h-10 rounded-lg flex items-center justify-center"
-                style={{
-                  background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
-                  boxShadow: '0 2px 8px rgba(59, 130, 246, 0.3)'
-                }}
-              >
-                <svg 
-                  width="24" 
-                  height="24" 
-                  viewBox="0 0 24 24" 
-                  fill="none" 
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  {/* 전구 본체 */}
-                  <path 
-                    d="M12 2C8.13 2 5 5.13 5 9C5 11.38 6.19 13.47 8 14.74V17C8 17.55 8.45 18 9 18H15C15.55 18 16 17.55 16 17V14.74C17.81 13.47 19 11.38 19 9C19 5.13 15.87 2 12 2Z" 
-                    fill="rgba(255, 255, 255, 0.95)"
-                  />
-                  {/* 회로판/네트워크 패턴 */}
-                  <circle cx="9" cy="8" r="1" fill="#60a5fa" />
-                  <circle cx="12" cy="7" r="1" fill="#60a5fa" />
-                  <circle cx="15" cy="8" r="1" fill="#60a5fa" />
-                  <line x1="9" y1="8" x2="12" y2="7" stroke="#60a5fa" strokeWidth="0.5" />
-                  <line x1="12" y1="7" x2="15" y2="8" stroke="#60a5fa" strokeWidth="0.5" />
-                  <circle cx="10" cy="10" r="0.8" fill="#60a5fa" />
-                  <circle cx="14" cy="10" r="0.8" fill="#60a5fa" />
-                  <line x1="10" y1="10" x2="14" y2="10" stroke="#60a5fa" strokeWidth="0.5" />
-                  {/* 전구 밑부분 */}
-                  <rect x="10" y="18" width="4" height="2" rx="1" fill="rgba(255, 255, 255, 0.9)" />
-                </svg>
-              </div>
-              {/* 텍스트 */}
-              <div className="flex items-baseline gap-1">
-                <span 
-                  className="text-lg font-semibold"
+        {/* 왼쪽 부분 (로고 + 메뉴) - 접기 가능, 완전히 제거 */}
+        {!isCollapsed && (
+          <div className="flex items-center space-x-4 flex-1 min-w-0">
+            {/* IT학습자료 로고 */}
+            <Link href="/" className="flex-shrink-0">
+              <div className="flex items-center gap-2">
+                {/* 아이콘 */}
+                <div 
+                  className="relative w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
                   style={{
-                    color: theme === 'dark' ? '#60a5fa' : '#2563eb',
-                    fontWeight: 600
+                    background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+                    boxShadow: '0 2px 8px rgba(59, 130, 246, 0.3)'
                   }}
                 >
-                  IT
-                </span>
-                <span 
-                  className="text-lg font-medium"
-                  style={{
-                    color: theme === 'dark' ? '#94a3b8' : '#475569',
-                    fontWeight: 500
-                  }}
-                >
-                  학습자료
-                </span>
+                  <svg 
+                    width="24" 
+                    height="24" 
+                    viewBox="0 0 24 24" 
+                    fill="none" 
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    {/* 전구 본체 */}
+                    <path 
+                      d="M12 2C8.13 2 5 5.13 5 9C5 11.38 6.19 13.47 8 14.74V17C8 17.55 8.45 18 9 18H15C15.55 18 16 17.55 16 17V14.74C17.81 13.47 19 11.38 19 9C19 5.13 15.87 2 12 2Z" 
+                      fill="rgba(255, 255, 255, 0.95)"
+                    />
+                    {/* 회로판/네트워크 패턴 */}
+                    <circle cx="9" cy="8" r="1" fill="#60a5fa" />
+                    <circle cx="12" cy="7" r="1" fill="#60a5fa" />
+                    <circle cx="15" cy="8" r="1" fill="#60a5fa" />
+                    <line x1="9" y1="8" x2="12" y2="7" stroke="#60a5fa" strokeWidth="0.5" />
+                    <line x1="12" y1="7" x2="15" y2="8" stroke="#60a5fa" strokeWidth="0.5" />
+                    <circle cx="10" cy="10" r="0.8" fill="#60a5fa" />
+                    <circle cx="14" cy="10" r="0.8" fill="#60a5fa" />
+                    <line x1="10" y1="10" x2="14" y2="10" stroke="#60a5fa" strokeWidth="0.5" />
+                    {/* 전구 밑부분 */}
+                    <rect x="10" y="18" width="4" height="2" rx="1" fill="rgba(255, 255, 255, 0.9)" />
+                  </svg>
+                </div>
+                {/* 텍스트 */}
+                <div className="flex items-baseline gap-1">
+                  <span 
+                    className="text-lg font-semibold"
+                    style={{
+                      color: theme === 'dark' ? '#60a5fa' : '#2563eb',
+                      fontWeight: 600
+                    }}
+                  >
+                    IT
+                  </span>
+                  <span 
+                    className="text-lg font-medium"
+                    style={{
+                      color: theme === 'dark' ? '#94a3b8' : '#475569',
+                      fontWeight: 500
+                    }}
+                  >
+                    학습자료
+                  </span>
+                </div>
               </div>
-            </div>
-          </Link>
-          {/* 메뉴 네비게이션 - Pill Navigation 스타일 */}
-          <div className="flex items-center">
-            {/* Pill Navigation Container */}
-            <div className="flex items-center p-1 rounded-full border backdrop-blur-md shadow-lg" style={{
-              background: theme === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)',
-              borderColor: theme === 'dark' ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.1)',
-              boxShadow: theme === 'dark' 
-                ? '0 4px 20px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.1)'
-                : '0 4px 20px rgba(0, 0, 0, 0.05), inset 0 1px 0 rgba(255, 255, 255, 0.8)'
-            }}>
-              <nav className="flex space-x-1">
-                {visibleMenus.map((menu) => (
-                  <MenuItem
-                    key={menu.path}
-                    menu={menu}
-                    pathname={pathname}
-                  />
-                ))}
-              </nav>
+            </Link>
+            {/* 메뉴 네비게이션 - Pill Navigation 스타일 */}
+            <div className="flex items-center">
+              {/* Pill Navigation Container */}
+              <div className="flex items-center p-1 rounded-full border backdrop-blur-md shadow-lg" style={{
+                background: theme === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)',
+                borderColor: theme === 'dark' ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.1)',
+                boxShadow: theme === 'dark' 
+                  ? '0 4px 20px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.1)'
+                  : '0 4px 20px rgba(0, 0, 0, 0.05), inset 0 1px 0 rgba(255, 255, 255, 0.8)'
+              }}>
+                <nav className="flex space-x-1">
+                  {visibleMenus.map((menu) => (
+                    <MenuItem
+                      key={menu.path}
+                      menu={menu}
+                      pathname={pathname}
+                    />
+                  ))}
+                </nav>
+              </div>
             </div>
           </div>
-        </div>
-        {/* 우측 버튼들 */}
-        <div className="flex items-center space-x-3">
+        )}
+        
+        {/* 우측 버튼들 - 항상 표시 */}
+        <div className={`flex items-center space-x-3 flex-shrink-0 ${isCollapsed ? 'ml-auto' : ''}`}>
+          {/* 접기/펼치기 버튼 */}
+          <button
+            onClick={toggleCollapse}
+            className="p-2 rounded-lg transition-colors border"
+            style={{
+              background: 'var(--bg-tertiary)',
+              borderColor: 'var(--border-secondary)',
+              color: 'var(--text-secondary)'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'var(--bg-card)';
+              e.currentTarget.style.color = 'var(--text-primary)';
+              e.currentTarget.style.borderColor = 'var(--border-primary)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'var(--bg-tertiary)';
+              e.currentTarget.style.color = 'var(--text-secondary)';
+              e.currentTarget.style.borderColor = 'var(--border-secondary)';
+            }}
+            title={isCollapsed ? '펼치기' : '접기'}
+          >
+            {isCollapsed ? (
+              <ChevronDown className="w-4 h-4" />
+            ) : (
+              <ChevronUp className="w-4 h-4" />
+            )}
+          </button>
           {/* 설정 드롭다운 */}
           {isClient && (
             <SettingsDropdown
