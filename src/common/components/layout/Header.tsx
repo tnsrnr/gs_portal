@@ -23,6 +23,30 @@ function MenuItem({ menu, pathname }: {
   // 메뉴별 색상 정의 - 원래 색상 유지하면서 은은한 효과만 추가
   const getMenuColor = (menuName: string) => {
     switch (menuName) {
+      case '입력': return {
+        primary: '#3b82f6', // blue
+        secondary: 'rgba(59, 130, 246, 0.1)',
+        hover: 'rgba(59, 130, 246, 0.15)',
+        gradient: 'linear-gradient(135deg, rgba(59, 130, 246, 0.08) 0%, rgba(59, 130, 246, 0.12) 100%)'
+      };
+      case '조회': return {
+        primary: '#22c55e', // green
+        secondary: 'rgba(34, 197, 94, 0.1)',
+        hover: 'rgba(34, 197, 94, 0.15)',
+        gradient: 'linear-gradient(135deg, rgba(34, 197, 94, 0.08) 0%, rgba(34, 197, 94, 0.12) 100%)'
+      };
+      case '학습': return {
+        primary: '#9333ea', // purple
+        secondary: 'rgba(147, 51, 234, 0.1)',
+        hover: 'rgba(147, 51, 234, 0.15)',
+        gradient: 'linear-gradient(135deg, rgba(147, 51, 234, 0.08) 0%, rgba(147, 51, 234, 0.12) 100%)'
+      };
+      case '통계': return {
+        primary: '#f97316', // orange
+        secondary: 'rgba(249, 115, 22, 0.1)',
+        hover: 'rgba(249, 115, 22, 0.15)',
+        gradient: 'linear-gradient(135deg, rgba(249, 115, 22, 0.08) 0%, rgba(249, 115, 22, 0.12) 100%)'
+      };
       case 'Overview': return {
         primary: '#3b82f6', // blue - 원래 색상 유지
         secondary: 'rgba(59, 130, 246, 0.1)',

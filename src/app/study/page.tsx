@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
-import { ArrowLeft, BookOpen, Eye, EyeOff, RotateCcw, ChevronLeft, ChevronRight, Edit, Save, X } from "lucide-react";
+import { useState, useEffect, useRef, useMemo } from 'react';
+import { ArrowLeft, BookOpen, Eye, EyeOff, RotateCcw, ChevronLeft, ChevronRight, Edit, Save, X, Table2, Plus, ClipboardPaste } from "lucide-react";
 import { motion } from "framer-motion";
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { useTheme } from '@/common/hooks/useTheme';
 import { Dialog, DialogContent } from '@/common/components/ui/dialog';
 import { TopicEditForm } from '@/app/view/components/topic_edit_form';
@@ -25,6 +25,7 @@ interface TopicData {
 export default function StudyPage() {
   const { theme } = useTheme();
   const router = useRouter();
+  const pathname = usePathname();
   const [topics, setTopics] = useState<TopicData[]>([]);
   const [currentIndex, setCurrentIndex] = useState<number>(0);
   const [showCheatsheet, setShowCheatsheet] = useState<boolean>(false);
@@ -48,10 +49,36 @@ export default function StudyPage() {
   // 학습 세션 추적
   const [studyStartTime, setStudyStartTime] = useState<Date | null>(null); // 학습 시작 시간
   const [showCompletionModal, setShowCompletionModal] = useState<boolean>(false); // 완료 모달 표시
+  
+  // 비교표 팝업
+  const [showTableModal, setShowTableModal] = useState<boolean>(false); // 비교표 팝업 표시
+  const [tableRows, setTableRows] = useState<number>(3); // 표 행 개수
+  const [tableCols, setTableCols] = useState<number>(4); // 표 열 개수
+  const [tableData, setTableData] = useState<string[][]>([]); // 표 데이터
 
   useEffect(() => {
     fetchTopics();
   }, []);
+
+  // 헤더의 "학습" 버튼 클릭 시 설정 화면으로 돌아가기
+  useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      const link = target.closest('a[href="/study"]');
+      if (link && pathname === '/study' && !showSettings) {
+        e.preventDefault();
+        e.stopPropagation();
+        setShowSettings(true);
+        window.history.pushState({}, '', '/study');
+      }
+    };
+    
+    document.addEventListener('click', handleClick, true);
+    
+    return () => {
+      document.removeEventListener('click', handleClick, true);
+    };
+  }, [pathname, showSettings]);
 
   const fetchTopics = async () => {
     setLoading(true);
@@ -178,8 +205,11 @@ export default function StudyPage() {
 
   const handlePrev = () => {
     if (studyMode === 'sequential') {
-      setCurrentIndex(prev => (prev - 1 + filteredTopics.length) % filteredTopics.length);
-      setShowCheatsheet(false);
+      // 첫 번째 토픽이면 이전으로 가지 않음
+      if (currentIndex > 0) {
+        setCurrentIndex(prev => prev - 1);
+        setShowCheatsheet(false);
+      }
     }
     setSelectedAnswer(null);
     setShowAnswer(false);
@@ -191,6 +221,216 @@ export default function StudyPage() {
     setShowCheatsheet(false);
     setSelectedAnswer(null);
     setShowAnswer(false);
+  };
+
+  // 비교표 팝업 열기
+  const openTableModal = () => {
+    setShowTableModal(true);
+    // 기본 3행 4열로 초기화
+    const initialData: string[][] = [];
+    for (let i = 0; i < tableRows; i++) {
+      initialData.push(Array(tableCols).fill(''));
+    }
+    setTableData(initialData);
+  };
+
+  // 표 크기 변경 시 데이터 초기화
+  useEffect(() => {
+    if (showTableModal) {
+      setTableData(prev => {
+        const newData: string[][] = [];
+        for (let i = 0; i < tableRows; i++) {
+          if (prev[i]) {
+            // 기존 데이터가 있으면 유지하고, 부족한 열은 빈 문자열로 채움
+            const row = [...prev[i]];
+            while (row.length < tableCols) {
+              row.push('');
+            }
+            newData.push(row.slice(0, tableCols));
+          } else {
+            newData.push(Array(tableCols).fill(''));
+          }
+        }
+        return newData;
+      });
+    }
+  }, [tableRows, tableCols, showTableModal]);
+
+  // 표 데이터 변경
+  const updateTableCell = (row: number, col: number, value: string) => {
+    const newData = [...tableData];
+    if (!newData[row]) {
+      newData[row] = Array(tableCols).fill('');
+    }
+    newData[row][col] = value;
+    setTableData(newData);
+  };
+
+  // 실제 텍스트 너비 측정 함수 (Canvas 사용)
+  const measureTextWidth = (text: string, fontSize: number = 14, fontFamily: string = 'system-ui, -apple-system, sans-serif'): number => {
+    // Canvas를 사용해서 정확한 텍스트 너비 측정
+    const canvas = document.createElement('canvas');
+    const context = canvas.getContext('2d');
+    if (!context) return text.length * 8; // 폴백
+    
+    context.font = `${fontSize}px ${fontFamily}`;
+    return context.measureText(text).width;
+  };
+
+  // 마크다운 테이블 생성
+  const generateMarkdownTable = (): string => {
+    if (tableData.length === 0) return '';
+    
+    // 현재 토픽명 가져오기
+    const currentTopic = getCurrentTopic();
+    const topicName = currentTopic?.topic || '비교표';
+    
+    // 모든 행을 정규화 (열 개수 맞추기)
+    const normalizedData: string[][] = [];
+    const maxCols = Math.max(...tableData.map(row => row.length), tableCols);
+    
+    tableData.forEach(row => {
+      const filledRow = [...row];
+      while (filledRow.length < maxCols) {
+        filledRow.push('');
+      }
+      normalizedData.push(filledRow.slice(0, maxCols));
+    });
+    
+    if (normalizedData.length === 0) return '';
+    
+    // 각 열의 최대 텍스트 너비 계산 (실제 DOM 측정)
+    const colWidths: number[] = [];
+    const fontSize = 14; // 기본 폰트 크기
+    const fontFamily = 'system-ui, -apple-system, sans-serif';
+    
+    for (let col = 0; col < maxCols; col++) {
+      let maxWidth = 0;
+      normalizedData.forEach(row => {
+        const cellText = String(row[col] || '').trim();
+        if (cellText) {
+          const width = measureTextWidth(cellText, fontSize, fontFamily);
+          maxWidth = Math.max(maxWidth, width);
+        }
+      });
+      // 최소 너비는 빈 셀 기준으로 설정
+      colWidths[col] = Math.max(measureTextWidth(' ', fontSize, fontFamily) * 3, maxWidth);
+    }
+    
+    // 셀 내용을 패딩하는 함수 (실제 너비 측정 기반)
+    const padCell = (text: string, targetWidth: number): string => {
+      const trimmed = String(text || '').trim();
+      if (!trimmed) return ' '.repeat(Math.ceil(targetWidth / measureTextWidth(' ', fontSize, fontFamily)));
+      
+      const currentWidth = measureTextWidth(trimmed, fontSize, fontFamily);
+      const spaceWidth = measureTextWidth(' ', fontSize, fontFamily);
+      const paddingCount = Math.max(0, Math.ceil((targetWidth - currentWidth) / spaceWidth));
+      
+      return trimmed + ' '.repeat(paddingCount);
+    };
+    
+    let markdown = '\n';
+    
+    // 표 제목 추가
+    markdown += `[${topicName} 비교표]\n\n`;
+    
+    // 고정 구분선 길이 (135자)
+    const separatorLine = '-'.repeat(135) + '\n';
+    
+    // 헤더 구분: 이중선 + 헤더 + 엔터 + 이중선
+    const doubleLine = '='.repeat(80) + '\n';
+    const headerRow = normalizedData[0] || [];
+    
+    markdown += doubleLine; // 이중선
+    markdown += ' ' + headerRow.map((cell, idx) => padCell(cell, colWidths[idx])).join(' | ') + ' \n'; // 헤더
+    markdown += '\n'; // 엔터 (빈 줄)
+    markdown += doubleLine; // 이중선
+    
+    // 나머지 행들 (각 행 사이에 대시 구분선 추가, 앞뒤 파이프 제거)
+    for (let i = 1; i < normalizedData.length; i++) {
+      const row = normalizedData[i] || [];
+      markdown += ' ' + row.map((cell, idx) => padCell(cell, colWidths[idx])).join(' | ') + ' \n';
+      // 마지막 행이 아니면 대시 구분선 추가 (파이프 없이)
+      if (i < normalizedData.length - 1) {
+        markdown += separatorLine;
+      }
+    }
+    
+    // 맨 아래 구분선
+    markdown += separatorLine;
+    
+    return markdown;
+  };
+
+  // 엑셀 붙여넣기 처리
+  const handlePasteFromExcel = async () => {
+    try {
+      const text = await navigator.clipboard.readText();
+      if (!text) {
+        alert('클립보드에 데이터가 없습니다.');
+        return;
+      }
+      
+      // 탭과 줄바꿈으로 데이터 파싱
+      const lines = text.split(/\r?\n/).filter(line => line.trim() !== '');
+      if (lines.length === 0) {
+        alert('붙여넣을 데이터가 없습니다.');
+        return;
+      }
+      
+      const parsedData: string[][] = [];
+      let maxCols = 0;
+      
+      lines.forEach(line => {
+        // 탭으로 구분 (탭이 없으면 공백으로 구분 시도)
+        const cells = line.includes('\t') 
+          ? line.split('\t').map(cell => cell.trim())
+          : line.split(/\s{2,}/).map(cell => cell.trim()); // 연속된 공백으로 구분
+        
+        if (cells.length > 0) {
+          parsedData.push(cells);
+          maxCols = Math.max(maxCols, cells.length);
+        }
+      });
+      
+      if (parsedData.length === 0) {
+        alert('데이터를 파싱할 수 없습니다.');
+        return;
+      }
+      
+      // 행/열 개수 자동 조정
+      setTableRows(parsedData.length);
+      setTableCols(maxCols);
+      
+      // 데이터 채우기 (부족한 열은 빈 문자열로 채움)
+      const filledData = parsedData.map(row => {
+        const filledRow = [...row];
+        while (filledRow.length < maxCols) {
+          filledRow.push('');
+        }
+        return filledRow.slice(0, maxCols);
+      });
+      
+      setTableData(filledData);
+      alert(`${parsedData.length}행 ${maxCols}열 데이터가 붙여넣기 되었습니다.`);
+    } catch (error) {
+      console.error('Paste error:', error);
+      alert('붙여넣기 중 오류가 발생했습니다. 클립보드 접근 권한을 확인해주세요.');
+    }
+  };
+
+  // 비교표 적용
+  const applyTable = () => {
+    const currentTopic = getCurrentTopic();
+    if (!currentTopic) return;
+    
+    const markdownTable = generateMarkdownTable();
+    const currentValue = currentTopic.additional_info || '';
+    const newValue = currentValue + markdownTable;
+    
+    // 설명 영역 편집 모드로 전환
+    startEdit('additional_info', newValue);
+    setShowTableModal(false);
   };
 
   // 인라인 편집 시작
@@ -238,14 +478,24 @@ export default function StudyPage() {
     }
   };
 
-  // 엔터키로 저장 (Shift+Enter는 줄바꿈)
+  // 엔터키 처리
   const handleEditKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    // Escape 키로 편집 취소
+    if (e.key === 'Escape') {
+      cancelEdit();
+      return;
+    }
+
+    // textarea 필드에서 Ctrl+Enter로 저장
+    if (e.key === 'Enter' && e.ctrlKey) {
       e.preventDefault();
       saveEdit();
-    } else if (e.key === 'Escape') {
-      cancelEdit();
+      return;
     }
+
+    // input 필드에서 Enter 키는 기본 동작 허용 (저장하지 않음)
+    // textarea 필드에서 Enter 키는 줄바꿈 (기본 동작)
+    // 저장은 명시적으로 저장 버튼을 클릭하거나 Ctrl+Enter 사용
   };
 
   const handleChoiceSelect = (index: number) => {
@@ -272,10 +522,14 @@ export default function StudyPage() {
   return (
     <div 
       className="min-h-screen relative overflow-hidden"
-      style={{ background: 'var(--bg-primary)' }}
+      style={{ 
+        background: 'var(--bg-primary)',
+        paddingTop: '64px',
+        zIndex: 0
+      }}
     >
       {/* 레벨 2 패턴 배경 - 학습용 보라색 계열 */}
-      <div className="absolute inset-0">
+      <div className="absolute inset-0" style={{ zIndex: 0 }}>
         {/* 기본 그라데이션 - 보라색 계열 */}
         <div className="absolute inset-0" style={{
           background: `
@@ -315,8 +569,8 @@ export default function StudyPage() {
         }}></div>
       </div>
 
-      <div className="relative z-10 min-h-[calc(100vh-64px)] p-3 space-y-3">
-        <div className="max-w-4xl mx-auto">
+      <div className="relative min-h-[calc(100vh-64px)] p-3 space-y-3" style={{ zIndex: 0 }}>
+        <div className="mx-auto" style={{ maxWidth: 'calc(56rem * 1.2)' }}>
           {/* 설정 화면 */}
           {showSettings ? (
             <motion.div
@@ -541,37 +795,6 @@ export default function StudyPage() {
             </motion.div>
           ) : (
             <>
-              {/* 헤더 */}
-              <div className="flex items-center gap-4 mb-4">
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => setShowSettings(true)}
-                  className="p-3 rounded-full transition-colors border backdrop-blur-sm"
-                  style={{
-                    background: 'var(--bg-tertiary)',
-                    borderColor: 'var(--border-color)',
-                    color: 'var(--text-secondary)'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.background = 'var(--bg-card)';
-                    e.currentTarget.style.color = 'var(--text-primary)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background = 'var(--bg-tertiary)';
-                    e.currentTarget.style.color = 'var(--text-secondary)';
-                  }}
-                >
-                  <ArrowLeft className="w-6 h-6" />
-                </motion.button>
-                
-                <div className="flex-1">
-                  <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
-                    토픽 학습
-                  </h1>
-                </div>
-              </div>
-
           {/* 학습 진행도 */}
           {filteredTopics.length > 0 && studyMode === 'random' && (
             <div className="mb-4">
@@ -611,13 +834,15 @@ export default function StudyPage() {
               style={{
                 background: 'var(--bg-card)',
                 borderColor: 'var(--border-color)',
-                minHeight: '600px',
-                height: '600px',
+                minHeight: '800px',
+                height: '800px',
                 display: 'flex',
-                flexDirection: 'column'
+                flexDirection: 'column',
+                position: 'relative',
+                zIndex: 0
               }}
             >
-              <div className="space-y-6 flex-1 overflow-y-auto pr-2" style={{ maxHeight: 'calc(600px - 80px)' }}>
+              <div className="space-y-6 flex-1 overflow-y-auto pr-2" style={{ maxHeight: '800px' }}>
                 {/* 토픽 정보 - 패턴에 따라 다르게 표시 */}
                 {(studyPattern === 'full' || studyPattern === 'select_definition') && (
                   <div className="space-y-3">
@@ -682,36 +907,9 @@ export default function StudyPage() {
                         )}
                       </div>
                       <div className="flex items-center gap-2">
-                        <motion.button
-                          whileHover={{ scale: 1.05 }}
-                          whileTap={{ scale: 0.95 }}
-                          onClick={() => setIsEditModalOpen(true)}
-                          className="p-2 rounded-lg border transition-colors"
-                          style={{
-                            background: 'var(--bg-tertiary)',
-                            borderColor: 'var(--border-color)',
-                            color: 'var(--text-secondary)'
-                          }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.background = 'var(--bg-card)';
-                            e.currentTarget.style.color = 'var(--text-primary)';
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.background = 'var(--bg-tertiary)';
-                            e.currentTarget.style.color = 'var(--text-secondary)';
-                          }}
-                          title="수정"
-                        >
-                          <Edit className="w-4 h-4" />
-                        </motion.button>
                         {currentTopic.category_l1 && (
                           <span className="px-2 py-1 rounded text-xs" style={{ background: 'var(--bg-tertiary)', color: 'var(--text-secondary)' }}>
-                            {currentTopic.category_l1}
-                          </span>
-                        )}
-                        {studyMode === 'sequential' && (
-                          <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-                            {currentIndex + 1} / {filteredTopics.length}
+                            {currentTopic.category_l1}{currentTopic.category_l2 ? `->${currentTopic.category_l2}` : ''}
                           </span>
                         )}
                       </div>
@@ -1037,103 +1235,78 @@ export default function StudyPage() {
                   </div>
                 )}
 
-                {/* 두음 영역 */}
-                {currentTopic.cheatsheet !== undefined && (
-                  <div className="border-t pt-4" style={{ borderColor: 'var(--border-color)' }}>
-                    <div className="flex items-center justify-between mb-2">
-                      <h3 className="font-semibold" style={{ color: 'var(--text-primary)' }}>두음</h3>
-                      <button
-                        onClick={() => setShowCheatsheet(!showCheatsheet)}
-                        className="flex items-center gap-1 text-sm"
-                        style={{ color: 'var(--text-secondary)' }}
-                      >
-                        {showCheatsheet ? (
-                          <>
-                            <EyeOff className="w-4 h-4" />
-                            <span>숨기기</span>
-                          </>
-                        ) : (
-                          <>
-                            <Eye className="w-4 h-4" />
-                            <span>보기</span>
-                          </>
-                        )}
-                      </button>
-                    </div>
-                    {showCheatsheet && (
-                      <motion.div
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: 'auto' }}
-                        exit={{ opacity: 0, height: 0 }}
-                      >
-                        {editingField === 'cheatsheet' ? (
-                          <div className="space-y-2">
-                            <Textarea
-                              ref={editInputRef}
-                              value={editValue}
-                              onChange={(e) => setEditValue(e.target.value)}
-                              onKeyDown={handleEditKeyDown}
-                              className="w-full min-h-[120px]"
-                              style={{
-                                background: 'var(--bg-card)',
-                                borderColor: 'var(--border-color)',
-                                color: 'var(--text-primary)'
-                              }}
-                              disabled={isSaving}
-                            />
-                            <div className="flex gap-2 justify-end">
-                              <motion.button
-                                whileHover={{ scale: 1.05 }}
-                                whileTap={{ scale: 0.95 }}
-                                onClick={saveEdit}
-                                disabled={isSaving}
-                                className="px-3 py-1 rounded flex items-center gap-1 text-sm"
-                                style={{
-                                  background: 'var(--accent-blue)',
-                                  color: 'white'
-                                }}
-                              >
-                                <Save className="w-3 h-3" />
-                                저장
-                              </motion.button>
-                              <motion.button
-                                whileHover={{ scale: 1.05 }}
-                                whileTap={{ scale: 0.95 }}
-                                onClick={cancelEdit}
-                                disabled={isSaving}
-                                className="px-3 py-1 rounded flex items-center gap-1 text-sm border"
-                                style={{
-                                  background: 'var(--bg-tertiary)',
-                                  borderColor: 'var(--border-color)',
-                                  color: 'var(--text-secondary)'
-                                }}
-                              >
-                                <X className="w-3 h-3" />
-                                취소
-                              </motion.button>
-                            </div>
-                          </div>
-                        ) : (
-                          <div 
-                            className="p-3 rounded cursor-pointer hover:opacity-70 transition-opacity" 
-                            style={{ background: 'var(--bg-tertiary)' }}
-                            onDoubleClick={() => startEdit('cheatsheet', currentTopic.cheatsheet || '')}
-                            title="더블클릭하여 수정"
-                          >
-                            <p className="text-sm whitespace-pre-wrap" style={{ color: 'var(--text-primary)' }}>
-                              {currentTopic.cheatsheet || '(두음 없음)'}
-                            </p>
-                          </div>
-                        )}
-                      </motion.div>
-                    )}
-                  </div>
-                )}
-
                 {/* 설명 영역 */}
                 {currentTopic.additional_info !== undefined && (
                   <div className="border-t pt-4" style={{ borderColor: 'var(--border-color)' }}>
-                    <h3 className="font-semibold mb-2" style={{ color: 'var(--text-primary)' }}>설명</h3>
+                    <div className="flex items-center gap-2 mb-2">
+                      <h3 className="font-semibold" style={{ color: 'var(--text-primary)' }}>설명</h3>
+                      {currentTopic.cheatsheet && (
+                        <span 
+                          className="px-2 py-1 rounded text-xs font-medium cursor-pointer hover:opacity-70 transition-opacity"
+                          style={{ 
+                            background: 'var(--bg-tertiary)',
+                            color: 'var(--text-primary)'
+                          }}
+                          onDoubleClick={() => startEdit('cheatsheet', currentTopic.cheatsheet || '')}
+                          title="더블클릭하여 수정"
+                        >
+                          {currentTopic.cheatsheet}
+                        </span>
+                      )}
+                    </div>
+                    {editingField === 'cheatsheet' && (
+                      <div className="mb-4 p-3 rounded border" style={{ 
+                        background: 'var(--bg-tertiary)',
+                        borderColor: 'var(--border-color)'
+                      }}>
+                        <div className="space-y-2">
+                          <Textarea
+                            ref={editInputRef}
+                            value={editValue}
+                            onChange={(e) => setEditValue(e.target.value)}
+                            onKeyDown={handleEditKeyDown}
+                            className="w-full min-h-[80px]"
+                            style={{
+                              background: 'var(--bg-card)',
+                              borderColor: 'var(--border-color)',
+                              color: 'var(--text-primary)'
+                            }}
+                            disabled={isSaving}
+                          />
+                          <div className="flex gap-2 justify-end">
+                            <motion.button
+                              whileHover={{ scale: 1.05 }}
+                              whileTap={{ scale: 0.95 }}
+                              onClick={saveEdit}
+                              disabled={isSaving}
+                              className="px-3 py-1 rounded flex items-center gap-1 text-sm"
+                              style={{
+                                background: 'var(--accent-blue)',
+                                color: 'white'
+                              }}
+                            >
+                              <Save className="w-3 h-3" />
+                              저장
+                            </motion.button>
+                            <motion.button
+                              whileHover={{ scale: 1.05 }}
+                              whileTap={{ scale: 0.95 }}
+                              onClick={cancelEdit}
+                              disabled={isSaving}
+                              className="px-3 py-1 rounded flex items-center gap-1 text-sm border"
+                              style={{
+                                background: 'var(--bg-tertiary)',
+                                borderColor: 'var(--border-color)',
+                                color: 'var(--text-secondary)'
+                              }}
+                            >
+                              <X className="w-3 h-3" />
+                              취소
+                            </motion.button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                     {editingField === 'additional_info' ? (
                       <div className="space-y-2">
                         <Textarea
@@ -1141,7 +1314,7 @@ export default function StudyPage() {
                           value={editValue}
                           onChange={(e) => setEditValue(e.target.value)}
                           onKeyDown={handleEditKeyDown}
-                          className="w-full min-h-[120px]"
+                          className="w-full min-h-[240px]"
                           style={{
                             background: 'var(--bg-card)',
                             borderColor: 'var(--border-color)',
@@ -1197,12 +1370,73 @@ export default function StudyPage() {
                 )}
               </div>
               {/* 컨트롤 버튼 - 고정 위치 */}
-              <div className="flex items-center justify-end gap-2 pt-4 border-t mt-4 flex-shrink-0" style={{ borderColor: 'var(--border-color)' }}>
+              <div className="flex items-center justify-between gap-2 pt-4 border-t mt-4 flex-shrink-0" style={{ borderColor: 'var(--border-color)' }}>
+                {/* 왼쪽: 수정 버튼 */}
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => setIsEditModalOpen(true)}
+                  className="p-2 rounded-lg border transition-colors"
+                  style={{
+                    background: 'var(--bg-tertiary)',
+                    borderColor: 'var(--border-color)',
+                    color: 'var(--text-secondary)'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'var(--bg-card)';
+                    e.currentTarget.style.color = 'var(--text-primary)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'var(--bg-tertiary)';
+                    e.currentTarget.style.color = 'var(--text-secondary)';
+                  }}
+                  title="수정"
+                >
+                  <Edit className="w-4 h-4" />
+                </motion.button>
+                
+                {/* 가운데: X/X 표시 */}
                 {studyMode === 'sequential' && (
+                  <span className="text-sm absolute left-1/2 transform -translate-x-1/2" style={{ color: 'var(--text-secondary)' }}>
+                    {currentIndex + 1} / {filteredTopics.length}
+                  </span>
+                )}
+                
+                {/* 오른쪽: 이전/다음 버튼 */}
+                <div className="flex items-center gap-2 ml-auto">
+                  {studyMode === 'sequential' && (
+                    <motion.button
+                      whileHover={currentIndex > 0 ? { scale: 1.02 } : {}}
+                      whileTap={currentIndex > 0 ? { scale: 0.98 } : {}}
+                      onClick={handlePrev}
+                      disabled={currentIndex === 0}
+                      className="px-4 py-2 rounded-lg font-medium border transition-colors"
+                      style={{
+                        background: currentIndex === 0 ? 'var(--bg-tertiary)' : 'var(--bg-card)',
+                        borderColor: 'var(--border-color)',
+                        color: currentIndex === 0 ? 'var(--text-secondary)' : 'var(--text-primary)',
+                        opacity: currentIndex === 0 ? 0.5 : 1,
+                        cursor: currentIndex === 0 ? 'not-allowed' : 'pointer'
+                      }}
+                      onMouseEnter={(e) => {
+                        if (currentIndex > 0) {
+                          e.currentTarget.style.background = 'var(--bg-tertiary)';
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (currentIndex > 0) {
+                          e.currentTarget.style.background = 'var(--bg-card)';
+                        }
+                      }}
+                    >
+                      <ChevronLeft className="w-4 h-4 inline-block mr-1" />
+                      이전
+                    </motion.button>
+                  )}
                   <motion.button
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
-                    onClick={handlePrev}
+                    onClick={handleNext}
                     className="px-4 py-2 rounded-lg font-medium border transition-colors"
                     style={{
                       background: 'var(--bg-card)',
@@ -1216,30 +1450,10 @@ export default function StudyPage() {
                       e.currentTarget.style.background = 'var(--bg-card)';
                     }}
                   >
-                    <ChevronLeft className="w-4 h-4 inline-block mr-1" />
-                    이전
+                    다음
+                    <ChevronRight className="w-4 h-4 inline-block ml-1" />
                   </motion.button>
-                )}
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={handleNext}
-                  className="px-4 py-2 rounded-lg font-medium border transition-colors"
-                  style={{
-                    background: 'var(--bg-card)',
-                    borderColor: 'var(--border-color)',
-                    color: 'var(--text-primary)'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.background = 'var(--bg-tertiary)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background = 'var(--bg-card)';
-                  }}
-                >
-                  다음
-                  <ChevronRight className="w-4 h-4 inline-block ml-1" />
-                </motion.button>
+                </div>
               </div>
             </motion.div>
           ) : (
@@ -1247,6 +1461,289 @@ export default function StudyPage() {
               <p style={{ color: 'var(--text-secondary)' }}>학습할 토픽이 없습니다.</p>
             </div>
           )}
+
+          {/* 비교표 추가 버튼 (좌측 하단) */}
+          {!showSettings && getCurrentTopic()?.additional_info !== undefined && (
+            <motion.button
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
+              onClick={openTableModal}
+              className="fixed bottom-6 left-6 z-50 p-4 rounded-full shadow-lg border"
+              style={{
+                background: 'linear-gradient(135deg, rgba(147, 51, 234, 0.9) 0%, rgba(168, 85, 247, 0.9) 100%)',
+                borderColor: 'var(--border-color)',
+                color: 'white'
+              }}
+              title="비교표 추가"
+            >
+              <Table2 className="w-6 h-6" />
+            </motion.button>
+          )}
+
+          {/* 비교표 팝업 */}
+          <Dialog open={showTableModal} onOpenChange={setShowTableModal}>
+            <DialogContent 
+              className="p-6 max-w-4xl h-[80vh] flex flex-col"
+              style={{
+                background: 'var(--bg-card)',
+                borderColor: 'var(--border-color)'
+              }}
+            >
+              {/* 고정 헤더 영역 */}
+              <div className="flex-shrink-0 mb-4 pb-4 border-b" style={{ borderColor: 'var(--border-color)' }}>
+                <h2 className="text-2xl font-bold mb-4" style={{ color: 'var(--text-primary)' }}>
+                  비교표 추가
+                </h2>
+                
+                {/* 표 크기 설정 - 고정 위치 */}
+                <div className="flex items-center gap-4">
+                  <div>
+                    <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-primary)' }}>
+                      행 개수
+                    </label>
+                    <input
+                      type="number"
+                      min="2"
+                      max="20"
+                      value={tableRows}
+                      onChange={(e) => {
+                        const newValue = parseInt(e.target.value) || 2;
+                        setTableRows(newValue);
+                      }}
+                      className="w-20 px-3 py-2 rounded-lg border"
+                      style={{
+                        background: 'var(--bg-tertiary)',
+                        borderColor: 'var(--border-color)',
+                        color: 'var(--text-primary)'
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-primary)' }}>
+                      열 개수
+                    </label>
+                    <input
+                      type="number"
+                      min="2"
+                      max="10"
+                      value={tableCols}
+                      onChange={(e) => {
+                        const newValue = parseInt(e.target.value) || 2;
+                        setTableCols(newValue);
+                      }}
+                      className="w-20 px-3 py-2 rounded-lg border"
+                      style={{
+                        background: 'var(--bg-tertiary)',
+                        borderColor: 'var(--border-color)',
+                        color: 'var(--text-primary)'
+                      }}
+                    />
+                  </div>
+                  <div className="flex-1" />
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={handlePasteFromExcel}
+                    className="px-4 py-2 rounded-lg font-medium border flex items-center gap-2"
+                    style={{
+                      background: 'var(--bg-tertiary)',
+                      borderColor: 'var(--border-color)',
+                      color: 'var(--text-primary)'
+                    }}
+                    title="엑셀/클립보드에서 데이터 붙여넣기 (Ctrl+V)"
+                  >
+                    <ClipboardPaste className="w-4 h-4" />
+                    엑셀 붙여넣기
+                  </motion.button>
+                </div>
+              </div>
+
+              {/* 스크롤 가능한 콘텐츠 영역 */}
+              <div className="flex-1 overflow-y-auto space-y-4 pr-2 min-h-0">
+
+                {/* 표 입력 영역 - 스크롤 가능 */}
+                <div 
+                  className="border rounded-lg p-4 overflow-x-auto overflow-y-auto" 
+                  style={{ 
+                    background: 'var(--bg-tertiary)',
+                    borderColor: 'var(--border-color)',
+                    maxHeight: '300px',
+                    minHeight: '100px'
+                  }}
+                  onPaste={(e) => {
+                    e.preventDefault();
+                    const text = e.clipboardData.getData('text');
+                    if (text) {
+                      // 탭과 줄바꿈으로 데이터 파싱
+                      const lines = text.split(/\r?\n/).filter(line => line.trim() !== '');
+                      if (lines.length === 0) return;
+                      
+                      const parsedData: string[][] = [];
+                      let maxCols = 0;
+                      
+                      lines.forEach(line => {
+                        const cells = line.includes('\t') 
+                          ? line.split('\t').map(cell => cell.trim())
+                          : line.split(/\s{2,}/).map(cell => cell.trim());
+                        
+                        if (cells.length > 0) {
+                          parsedData.push(cells);
+                          maxCols = Math.max(maxCols, cells.length);
+                        }
+                      });
+                      
+                      if (parsedData.length > 0) {
+                        setTableRows(parsedData.length);
+                        setTableCols(maxCols);
+                        
+                        const filledData = parsedData.map(row => {
+                          const filledRow = [...row];
+                          while (filledRow.length < maxCols) {
+                            filledRow.push('');
+                          }
+                          return filledRow.slice(0, maxCols);
+                        });
+                        
+                        setTableData(filledData);
+                      }
+                    }
+                  }}
+                >
+                  {(() => {
+                    // 각 열의 최대 너비 계산 (한글 고려)
+                    const calculateTextWidth = (text: string): number => {
+                      return Array.from(text).reduce((acc, char) => {
+                        return acc + (char.charCodeAt(0) > 127 ? 2 : 1);
+                      }, 0);
+                    };
+                    
+                    const colMaxWidths: number[] = [];
+                    for (let col = 0; col < tableCols; col++) {
+                      let maxWidth = 0;
+                      tableData.forEach(row => {
+                        const cellValue = String(row[col] || '').trim();
+                        const width = calculateTextWidth(cellValue);
+                        maxWidth = Math.max(maxWidth, width);
+                      });
+                      // 최소 5자, 최대 30자
+                      colMaxWidths[col] = Math.max(5, Math.min(maxWidth, 30));
+                    }
+                    
+                    // 모든 열의 최대 너비 중 최대값 찾기
+                    const globalMaxWidth = Math.max(...colMaxWidths, 10);
+                    
+                    // 각 열의 고정 너비 계산 (한글 고려하여 더 정확하게)
+                    const columnWidth = Math.max(150, globalMaxWidth * 10 + 60); // 최소 150px, 한글 고려하여 여유있게
+                    
+                    return (
+                      <table 
+                        className="border-collapse" 
+                        style={{ 
+                          tableLayout: 'fixed',
+                          width: `${columnWidth * tableCols}px`,
+                          minWidth: `${columnWidth * tableCols}px`
+                        }}
+                      >
+                        <colgroup>
+                          {Array.from({ length: tableCols }).map((_, colIndex) => (
+                            <col 
+                              key={colIndex} 
+                              style={{ 
+                                width: `${columnWidth}px`,
+                                minWidth: `${columnWidth}px`,
+                                maxWidth: `${columnWidth}px`
+                              }}
+                            />
+                          ))}
+                        </colgroup>
+                        <tbody>
+                          {tableData.map((row, rowIndex) => (
+                            <tr key={rowIndex}>
+                              {Array.from({ length: tableCols }).map((_, colIndex) => (
+                                <td 
+                                  key={colIndex} 
+                                  className="p-2 border" 
+                                  style={{ 
+                                    borderColor: 'var(--border-color)',
+                                    width: `${columnWidth}px`,
+                                    minWidth: `${columnWidth}px`,
+                                    maxWidth: `${columnWidth}px`
+                                  }}
+                                >
+                                  <input
+                                    type="text"
+                                    value={tableData[rowIndex]?.[colIndex] || ''}
+                                    onChange={(e) => updateTableCell(rowIndex, colIndex, e.target.value)}
+                                    className="w-full px-2 py-1 rounded border text-sm"
+                                    style={{
+                                      background: 'var(--bg-card)',
+                                      borderColor: 'var(--border-color)',
+                                      color: 'var(--text-primary)',
+                                      width: '100%',
+                                      boxSizing: 'border-box'
+                                    }}
+                                    placeholder={`${rowIndex === 0 ? '헤더' : '데이터'}`}
+                                  />
+                                </td>
+                              ))}
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    );
+                  })()}
+                </div>
+
+                {/* 미리보기 */}
+                <div className="border rounded-lg p-4 overflow-x-auto" style={{ 
+                  background: 'var(--bg-tertiary)',
+                  borderColor: 'var(--border-color)'
+                }}>
+                  <h3 className="text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>
+                    미리보기
+                  </h3>
+                  <div className="text-xs font-mono whitespace-pre overflow-x-auto" style={{ 
+                    color: 'var(--text-secondary)',
+                    minWidth: '100%',
+                    width: 'max-content'
+                  }}>
+                    {generateMarkdownTable() || '(표를 입력하세요)'}
+                  </div>
+                </div>
+
+              </div>
+
+              {/* 고정 버튼 영역 */}
+              <div className="flex-shrink-0 pt-4 border-t flex gap-2 justify-end" style={{ borderColor: 'var(--border-color)' }}>
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => setShowTableModal(false)}
+                  className="px-4 py-2 rounded-lg font-medium border"
+                  style={{
+                    background: 'var(--bg-tertiary)',
+                    borderColor: 'var(--border-color)',
+                    color: 'var(--text-secondary)'
+                  }}
+                >
+                  취소
+                </motion.button>
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={applyTable}
+                  className="px-4 py-2 rounded-lg font-medium text-white"
+                  style={{
+                    background: 'linear-gradient(135deg, rgba(147, 51, 234, 0.8) 0%, rgba(168, 85, 247, 0.8) 100%)'
+                  }}
+                >
+                  적용
+                </motion.button>
+              </div>
+            </DialogContent>
+          </Dialog>
 
           {/* 수정 모달 */}
           <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>

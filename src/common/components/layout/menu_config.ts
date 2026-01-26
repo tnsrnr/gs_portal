@@ -1,7 +1,8 @@
 import { 
   Edit3,
   Eye,
-  BookOpen
+  BookOpen,
+  BarChart3
 } from "lucide-react";
 import type { LucideIcon } from 'lucide-react';
 
@@ -39,6 +40,12 @@ export const menuItems: MenuItem[] = [
     path: '/study', 
     icon: BookOpen,
     description: '토픽 학습'
+  },
+  { 
+    name: '통계', 
+    path: '/stats', 
+    icon: BarChart3,
+    description: '학습 통계'
   }
 ];
 
