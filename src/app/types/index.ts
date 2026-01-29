@@ -13,6 +13,7 @@ export interface StudyItem {
   definition?: string; // 토픽 정의
   cheatsheet?: string; // 암기용 요약 정보(두음)
   additional_info?: string; // 토픽 설명
+  viewtable?: string; // 비교표(학습 화면 하단 표)
 }
 
 export interface TabData {

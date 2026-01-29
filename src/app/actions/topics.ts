@@ -19,8 +19,9 @@ export async function saveTopic(item: Omit<StudyItem, 'id' | 'no'>) {
             child_topic,
             definition,
             cheatsheet,
-            additional_info
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+            additional_info,
+            viewtable
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
         `;
 
         const values = [
@@ -36,6 +37,7 @@ export async function saveTopic(item: Omit<StudyItem, 'id' | 'no'>) {
           item.definition || null,
           item.cheatsheet || null,
           item.additional_info || null,
+          item.viewtable || null,
         ];
 
     await pool.query(query, values);
@@ -74,8 +76,9 @@ export async function saveTopics(items: Omit<StudyItem, 'id' | 'no'>[]) {
             child_topic,
             definition,
             cheatsheet,
-            additional_info
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+            additional_info,
+            viewtable
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
         `;
 
         const values = [
@@ -91,6 +94,7 @@ export async function saveTopics(items: Omit<StudyItem, 'id' | 'no'>[]) {
           item.definition || null,
           item.cheatsheet || null,
           item.additional_info || null,
+          item.viewtable || null,
         ];
 
         await client.query(query, values);
@@ -171,6 +175,10 @@ export async function updateTopic(originalTopic: string, item: Partial<Omit<Stud
     if (item.additional_info !== undefined) {
       fields.push(`additional_info = $${paramIndex++}`);
       values.push(item.additional_info);
+    }
+    if (item.viewtable !== undefined) {
+      fields.push(`viewtable = $${paramIndex++}`);
+      values.push(item.viewtable);
     }
 
     if (fields.length === 0) {

@@ -20,6 +20,7 @@ interface TopicData {
   definition?: string;
   cheatsheet?: string;
   additional_info?: string;
+  viewtable?: string;
 }
 
 export default function StudyPage() {
@@ -425,11 +426,14 @@ export default function StudyPage() {
     if (!currentTopic) return;
     
     const markdownTable = generateMarkdownTable();
-    const currentValue = currentTopic.additional_info || '';
-    const newValue = currentValue + markdownTable;
+    const currentValue = currentTopic.viewtable || '';
+    // 기존 값과 표 사이를 "한 줄"만 띄우기
+    const normalizedCurrent = currentValue ? currentValue.replace(/\n+$/, '\n') : '';
+    const normalizedTable = markdownTable.replace(/^\n+/, '\n');
+    const newValue = normalizedCurrent + normalizedTable;
     
-    // 설명 영역 편집 모드로 전환
-    startEdit('additional_info', newValue);
+    // viewtable 편집 모드로 전환
+    startEdit('viewtable', newValue);
     setShowTableModal(false);
   };
 
@@ -1368,6 +1372,72 @@ export default function StudyPage() {
                     )}
                   </div>
                 )}
+
+                {/* 비교표 영역 (맨 마지막) */}
+                {currentTopic.viewtable !== undefined && currentTopic.viewtable !== null && currentTopic.viewtable !== '' && (
+                  <div className="border-t pt-4" style={{ borderColor: 'var(--border-color)' }}>
+                    <h3 className="font-semibold mb-2" style={{ color: 'var(--text-primary)' }}>비교표</h3>
+                    {editingField === 'viewtable' ? (
+                      <div className="space-y-2">
+                        <Textarea
+                          ref={editInputRef}
+                          value={editValue}
+                          onChange={(e) => setEditValue(e.target.value)}
+                          onKeyDown={handleEditKeyDown}
+                          className="w-full min-h-[240px]"
+                          style={{
+                            background: 'var(--bg-card)',
+                            borderColor: 'var(--border-color)',
+                            color: 'var(--text-primary)'
+                          }}
+                          disabled={isSaving}
+                        />
+                        <div className="flex gap-2 justify-end">
+                          <motion.button
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                            onClick={saveEdit}
+                            disabled={isSaving}
+                            className="px-3 py-1 rounded flex items-center gap-1 text-sm"
+                            style={{
+                              background: 'var(--accent-blue)',
+                              color: 'white'
+                            }}
+                          >
+                            <Save className="w-3 h-3" />
+                            저장
+                          </motion.button>
+                          <motion.button
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                            onClick={cancelEdit}
+                            disabled={isSaving}
+                            className="px-3 py-1 rounded flex items-center gap-1 text-sm border"
+                            style={{
+                              background: 'var(--bg-tertiary)',
+                              borderColor: 'var(--border-color)',
+                              color: 'var(--text-secondary)'
+                            }}
+                          >
+                            <X className="w-3 h-3" />
+                            취소
+                          </motion.button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div
+                        className="p-3 rounded cursor-pointer hover:opacity-70 transition-opacity"
+                        style={{ background: 'var(--bg-tertiary)' }}
+                        onDoubleClick={() => startEdit('viewtable', currentTopic.viewtable || '')}
+                        title="더블클릭하여 수정"
+                      >
+                        <p className="text-sm whitespace-pre-wrap" style={{ color: 'var(--text-primary)' }}>
+                          {currentTopic.viewtable}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
               {/* 컨트롤 버튼 - 고정 위치 */}
               <div className="flex items-center justify-between gap-2 pt-4 border-t mt-4 flex-shrink-0" style={{ borderColor: 'var(--border-color)' }}>
@@ -1463,7 +1533,7 @@ export default function StudyPage() {
           )}
 
           {/* 비교표 추가 버튼 (좌측 하단) */}
-          {!showSettings && getCurrentTopic()?.additional_info !== undefined && (
+          {!showSettings && currentTopic && (
             <motion.button
               initial={{ opacity: 0, scale: 0.8 }}
               animate={{ opacity: 1, scale: 1 }}

@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
     const additional_info = searchParams.get('additional_info');
     
     // 기본 쿼리: 모든 토픽을 카테고리 순으로 조회
-    // SELECT * FROM topics WHERE 1=1 ORDER BY category_l1, category_l2
+    // SELECT * FROM topics WHERE 1=1 ORDER BY category_l1, category_l2, topic
     let query = `
       SELECT * FROM topics 
       WHERE 1=1 
@@ -119,7 +119,7 @@ export async function GET(request: NextRequest) {
     }
 
     // 정렬 추가 (ORDER BY)
-    query += ` ORDER BY category_l1, category_l2`;
+    query += ` ORDER BY category_l1, category_l2, topic`;
 
     // 바인드 변수를 실제 값으로 치환한 쿼리 생성 (콘솔 출력용)
     // 역순으로 치환하여 $10이 $1보다 먼저 치환되도록 함
