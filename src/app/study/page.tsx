@@ -1318,11 +1318,13 @@ export default function StudyPage() {
                           value={editValue}
                           onChange={(e) => setEditValue(e.target.value)}
                           onKeyDown={handleEditKeyDown}
-                          className="w-full min-h-[240px]"
+                          className="w-full"
                           style={{
                             background: 'var(--bg-card)',
                             borderColor: 'var(--border-color)',
-                            color: 'var(--text-primary)'
+                            color: 'var(--text-primary)',
+                            minHeight: '300px',
+                            height: '300px'
                           }}
                           disabled={isSaving}
                         />
@@ -1384,11 +1386,13 @@ export default function StudyPage() {
                           value={editValue}
                           onChange={(e) => setEditValue(e.target.value)}
                           onKeyDown={handleEditKeyDown}
-                          className="w-full min-h-[240px]"
+                          className="w-full"
                           style={{
                             background: 'var(--bg-card)',
                             borderColor: 'var(--border-color)',
-                            color: 'var(--text-primary)'
+                            color: 'var(--text-primary)',
+                            minHeight: '300px',
+                            height: '300px'
                           }}
                           disabled={isSaving}
                         />
@@ -1832,9 +1836,30 @@ export default function StudyPage() {
                   onClose={() => {
                     setIsEditModalOpen(false);
                   }}
-                  onSave={() => {
-                    // 저장 후 데이터 새로고침
-                    fetchTopics();
+                  onSave={(updatedTopic, originalTopicName) => {
+                    // 저장 후 학습 상태(인덱스/진행도) 초기화 없이 로컬 데이터만 갱신
+                    setTopics(prev =>
+                      prev.map(t =>
+                        t.topic === originalTopicName ? { ...t, ...updatedTopic } : t
+                      )
+                    );
+
+                    // 현재 토픽 상태도 갱신 (토픽명이 바뀌는 경우 포함)
+                    setCurrentTopicState(prev =>
+                      prev && prev.topic === originalTopicName ? { ...prev, ...updatedTopic } : prev
+                    );
+
+                    // 랜덤 모드 진행도 set에 토픽명이 들어있다면 치환
+                    if (updatedTopic?.topic && updatedTopic.topic !== originalTopicName) {
+                      setStudiedTopics(prev => {
+                        if (!prev.has(originalTopicName)) return prev;
+                        const next = new Set(prev);
+                        next.delete(originalTopicName);
+                        next.add(updatedTopic.topic);
+                        return next;
+                      });
+                    }
+
                     setIsEditModalOpen(false);
                   }}
                 />

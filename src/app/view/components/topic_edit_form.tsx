@@ -173,7 +173,7 @@ interface TopicEditFormProps {
     additional_info?: string;
   };
   onClose: () => void;
-  onSave?: () => void; // 저장 후 콜백
+  onSave?: (updatedTopic: any, originalTopicName: string) => void; // 저장 후 콜백
 }
 
 export function TopicEditForm({ topic, onClose, onSave }: TopicEditFormProps) {
@@ -218,7 +218,7 @@ export function TopicEditForm({ topic, onClose, onSave }: TopicEditFormProps) {
         onClose();
         // 저장 후 콜백 호출 (데이터 새로고침)
         if (onSave) {
-          onSave();
+          onSave(formData, originalTopicName);
         }
       } else {
         alert(`저장 실패: ${result.error || '알 수 없는 오류'}`);

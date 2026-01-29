@@ -423,7 +423,7 @@ export function TopicsTable({ data, loading, onDataUpdate }: TopicsTableProps) {
                 setIsEditModalOpen(false);
                 setSelectedTopic(null);
               }}
-              onSave={() => {
+              onSave={(_updatedTopic, _originalTopicName) => {
                 // 저장 후 데이터 새로고침
                 if (onDataUpdate) {
                   onDataUpdate();
