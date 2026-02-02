@@ -1375,8 +1375,8 @@ export default function StudyPage() {
                   </div>
                 )}
 
-                {/* 비교표 영역 (맨 마지막) */}
-                {currentTopic.viewtable !== undefined && currentTopic.viewtable !== null && currentTopic.viewtable !== '' && (
+                {/* 비교표 영역 (맨 마지막) - viewtable에 내용이 있거나, 팝업에서 적용 후 편집 중일 때 표시 */}
+                {((currentTopic.viewtable !== undefined && currentTopic.viewtable !== null && currentTopic.viewtable !== '') || editingField === 'viewtable') && (
                   <div className="border-t pt-4" style={{ borderColor: 'var(--border-color)' }}>
                     <h3 className="font-semibold mb-2" style={{ color: 'var(--text-primary)' }}>비교표</h3>
                     {editingField === 'viewtable' ? (
