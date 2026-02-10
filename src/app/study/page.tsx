@@ -9,6 +9,7 @@ import { Dialog, DialogContent } from '@/common/components/ui/dialog';
 import { TopicEditForm } from '@/app/view/components/topic_edit_form';
 import { updateTopic } from '@/app/actions/topics';
 import { Textarea } from '@/common/components/ui/textarea';
+import DOMPurify from 'dompurify';
 
 interface TopicData {
   topic: string;
@@ -46,6 +47,8 @@ export default function StudyPage() {
   const [editValue, setEditValue] = useState<string>(''); // 편집 중인 값
   const [isSaving, setIsSaving] = useState<boolean>(false); // 저장 중 여부
   const editInputRef = useRef<HTMLTextAreaElement>(null);
+  const descEditRef = useRef<HTMLDivElement>(null); // 설명(additional_info) contenteditable - 엑셀 HTML 붙여넣기용
+  const descEditInitializedRef = useRef<boolean>(false);
   
   // 학습 세션 추적
   const [studyStartTime, setStudyStartTime] = useState<Date | null>(null); // 학습 시작 시간
@@ -442,32 +445,53 @@ export default function StudyPage() {
     setEditingField(field);
     setEditValue(currentValue || '');
     setTimeout(() => {
-      editInputRef.current?.focus();
+      if (field === 'additional_info') descEditRef.current?.focus();
+      else editInputRef.current?.focus();
     }, 0);
   };
 
   // 인라인 편집 취소
   const cancelEdit = () => {
+    if (editingField === 'additional_info') descEditInitializedRef.current = false;
     setEditingField(null);
     setEditValue('');
   };
+
+  // 설명(additional_info) contenteditable 초기 내용 설정 및 리셋
+  useEffect(() => {
+    if (editingField !== 'additional_info') {
+      descEditInitializedRef.current = false;
+      return;
+    }
+    const el = descEditRef.current;
+    if (el && !descEditInitializedRef.current) {
+      el.innerHTML = DOMPurify.sanitize(editValue || '');
+      descEditInitializedRef.current = true;
+    }
+  }, [editingField, editValue]);
 
   // 인라인 편집 저장
   const saveEdit = async () => {
     if (!currentTopic || !editingField) return;
 
+    // 설명(additional_info)은 contenteditable에서 innerHTML로 저장 (엑셀 테두리 등 HTML 붙여넣기 지원)
+    let valueToSave = editValue;
+    if (editingField === 'additional_info' && descEditRef.current) {
+      valueToSave = DOMPurify.sanitize(descEditRef.current.innerHTML);
+    }
+
     setIsSaving(true);
     try {
       const updateData: Partial<TopicData> = {};
-      updateData[editingField as keyof TopicData] = editValue as any;
+      updateData[editingField as keyof TopicData] = valueToSave as any;
 
       const result = await updateTopic(currentTopic.topic, updateData);
       if (result.success) {
         // 로컬 상태 업데이트
-        setCurrentTopicState(prev => prev ? { ...prev, [editingField]: editValue } : null);
+        setCurrentTopicState(prev => prev ? { ...prev, [editingField]: valueToSave } : null);
         // 전체 토픽 목록도 업데이트
         setTopics(prev => prev.map(t => 
-          t.topic === currentTopic.topic ? { ...t, [editingField]: editValue } : t
+          t.topic === currentTopic.topic ? { ...t, [editingField]: valueToSave } : t
         ));
         setEditingField(null);
         setEditValue('');
@@ -1313,12 +1337,20 @@ export default function StudyPage() {
                     )}
                     {editingField === 'additional_info' ? (
                       <div className="space-y-2">
-                        <Textarea
-                          ref={editInputRef}
-                          value={editValue}
-                          onChange={(e) => setEditValue(e.target.value)}
+                        <div
+                          ref={descEditRef}
+                          contentEditable
+                          suppressContentEditableWarning
+                          onPaste={(e) => {
+                            const html = e.clipboardData.getData('text/html');
+                            if (html) {
+                              e.preventDefault();
+                              const clean = DOMPurify.sanitize(html, { USE_PROFILES: { html: true } });
+                              document.execCommand('insertHTML', false, clean);
+                            }
+                          }}
                           onKeyDown={handleEditKeyDown}
-                          className="w-full"
+                          className="w-full overflow-auto border rounded-md px-3 py-2 text-sm"
                           style={{
                             background: 'var(--bg-card)',
                             borderColor: 'var(--border-color)',
@@ -1326,7 +1358,6 @@ export default function StudyPage() {
                             minHeight: '300px',
                             height: '300px'
                           }}
-                          disabled={isSaving}
                         />
                         <div className="flex gap-2 justify-end">
                           <motion.button
@@ -1367,9 +1398,24 @@ export default function StudyPage() {
                         onDoubleClick={() => startEdit('additional_info', currentTopic.additional_info || '')}
                         title="더블클릭하여 수정"
                       >
-                        <p className="text-sm whitespace-pre-wrap" style={{ color: 'var(--text-primary)' }}>
-                          {currentTopic.additional_info || '(설명 없음)'}
-                        </p>
+                        {(() => {
+                          const raw = currentTopic.additional_info || '(설명 없음)';
+                          const isHtml = raw !== '(설명 없음)' && /<(?:\w|\/|!--)/.test(raw);
+                          if (isHtml) {
+                            return (
+                              <div
+                                className="text-sm [&_table]:border [&_table]:border-collapse [&_th]:border [&_th]:p-2 [&_td]:border [&_td]:p-2"
+                                style={{ color: 'var(--text-primary)' }}
+                                dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(raw, { USE_PROFILES: { html: true } }) }}
+                              />
+                            );
+                          }
+                          return (
+                            <p className="text-sm whitespace-pre-wrap" style={{ color: 'var(--text-primary)' }}>
+                              {raw}
+                            </p>
+                          );
+                        })()}
                       </div>
                     )}
                   </div>

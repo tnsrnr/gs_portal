@@ -36,6 +36,9 @@ next-env.d.ts
 # IDE
 .vscode/
 .idea/
+
+# 한글 커밋용 임시 메시지 파일 (UTF-8)
+scripts/.commit-msg
 *.swp
 *.swo
 *~
