@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { ArrowLeft, BookOpen, Eye, EyeOff, RotateCcw, ChevronLeft, ChevronRight, Edit, Save, X, Table2, Plus, ClipboardPaste } from "lucide-react";
+import { ArrowLeft, BookOpen, Eye, EyeOff, RotateCcw, ChevronLeft, ChevronRight, Edit, Save, X, Table2, Plus, ClipboardPaste, Bold, Italic, Underline } from "lucide-react";
 import { motion } from "framer-motion";
 import { useRouter, usePathname } from 'next/navigation';
 import { useTheme } from '@/common/hooks/useTheme';
@@ -478,6 +478,14 @@ export default function StudyPage() {
     let valueToSave = editValue;
     if (editingField === 'additional_info' && descEditRef.current) {
       valueToSave = DOMPurify.sanitize(descEditRef.current.innerHTML);
+      // 앞뒤 공백/줄바꿈 제거 (HTML 빈 태그 포함: <br>, <p></p>, <div></div>, &nbsp; 등)
+      valueToSave = valueToSave
+        .replace(/^(\s|<br\s*\/?>|<p>(&nbsp;|\s)*<\/p>|<div>(&nbsp;|\s)*<\/div>)+/gi, '')
+        .replace(/(\s|<br\s*\/?>|<p>(&nbsp;|\s)*<\/p>|<div>(&nbsp;|\s)*<\/div>)+$/gi, '')
+        .trim();
+    } else {
+      // 일반 텍스트는 trim
+      valueToSave = valueToSave.trim();
     }
 
     setIsSaving(true);
@@ -1337,6 +1345,36 @@ export default function StudyPage() {
                     )}
                     {editingField === 'additional_info' ? (
                       <div className="space-y-2">
+                        {/* 텍스트 서식 툴바 */}
+                        <div className="flex gap-1 p-1 border rounded-md" style={{ borderColor: 'var(--border-color)', background: 'var(--bg-tertiary)' }}>
+                          <button
+                            type="button"
+                            onClick={() => document.execCommand('bold')}
+                            className="p-1.5 rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                            title="굵게 (Ctrl+B)"
+                            style={{ color: 'var(--text-primary)' }}
+                          >
+                            <Bold className="w-4 h-4" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => document.execCommand('italic')}
+                            className="p-1.5 rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                            title="기울임 (Ctrl+I)"
+                            style={{ color: 'var(--text-primary)' }}
+                          >
+                            <Italic className="w-4 h-4" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => document.execCommand('underline')}
+                            className="p-1.5 rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                            title="밑줄 (Ctrl+U)"
+                            style={{ color: 'var(--text-primary)' }}
+                          >
+                            <Underline className="w-4 h-4" />
+                          </button>
+                        </div>
                         <div
                           ref={descEditRef}
                           contentEditable
