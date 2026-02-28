@@ -118,8 +118,10 @@ export default function StudyPage() {
     }
   };
 
-  // 대분류 목록 추출
-  const categories = Array.from(new Set(topics.map(t => t.category_l1).filter(Boolean))).sort();
+  // 대분류 목록 추출 (자연스러운 숫자 정렬)
+  const categories = Array.from(new Set(topics.map(t => t.category_l1).filter(Boolean))).sort((a, b) => {
+    return a.localeCompare(b, 'ko', { numeric: true, sensitivity: 'base' });
+  });
 
   // 각 대분류별 토픽 수 계산
   const categoryCounts = categories.reduce((acc, category) => {
