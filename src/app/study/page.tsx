@@ -84,7 +84,7 @@ export default function StudyPage() {
     };
   }, [pathname, showSettings]);
 
-  // 학습 중 키보드 단축키 (엔터/스페이스: 다음)
+  // 학습 중 키보드 단축키 (엔터/스페이스: 다음, 화살표: 이전/다음)
   useEffect(() => {
     if (showSettings || editingField || showTableModal || isEditModalOpen || showCompletionModal) return;
 
@@ -93,6 +93,16 @@ export default function StudyPage() {
       if (e.key === 'Enter' || e.key === ' ') {
         e.preventDefault();
         handleNext();
+      }
+      // 오른쪽 화살표: 다음 버튼
+      else if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        handleNext();
+      }
+      // 왼쪽 화살표: 이전 버튼 (순차 모드에서만)
+      else if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        handlePrev();
       }
     };
 
