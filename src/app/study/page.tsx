@@ -84,6 +84,22 @@ export default function StudyPage() {
     };
   }, [pathname, showSettings]);
 
+  // 학습 중 키보드 단축키 (엔터/스페이스: 다음)
+  useEffect(() => {
+    if (showSettings || editingField || showTableModal || isEditModalOpen || showCompletionModal) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // 엔터 또는 스페이스: 다음 버튼
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        handleNext();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [showSettings, editingField, showTableModal, isEditModalOpen, showCompletionModal, currentIndex, studyMode, studiedTopics, topics, selectedCategories]);
+
   const fetchTopics = async () => {
     setLoading(true);
     try {
