@@ -4,7 +4,7 @@ import { useTheme as useThemeContext } from '../contexts/ThemeContext';
 import { useEffect } from 'react';
 
 export function useTheme() {
-  const { theme, toggleTheme, setTheme } = useThemeContext();
+  const { theme, toggleTheme, setTheme, stealth, toggleStealth } = useThemeContext();
 
   // 테마 변경 시 document에 data-theme 속성 설정
   useEffect(() => {
@@ -16,6 +16,8 @@ export function useTheme() {
     theme,
     toggleTheme,
     setTheme,
+    stealth,
+    toggleStealth,
     isDark: theme === 'dark',
     isLight: theme === 'light'
   };

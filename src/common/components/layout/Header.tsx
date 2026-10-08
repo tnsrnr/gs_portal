@@ -11,7 +11,7 @@ function cn(...classes: Array<string | false | undefined | null>): string {
   return classes.filter(Boolean).join(' ');
 }
 
-import { Settings, LogOut, Sun, Moon, ChevronDown, ChevronUp } from 'lucide-react';
+import { Settings, LogOut, Sun, Moon, ChevronDown, ChevronUp, EyeOff, Eye } from 'lucide-react';
 import { useTheme } from '@/common/hooks/useTheme';
 
 // 드롭다운 메뉴 아이템 컴포넌트
@@ -324,7 +324,7 @@ function SettingsDropdown({
   onClose: () => void;
   handleLogout: () => void;
 }) {
-  const { theme, toggleTheme } = useTheme();
+  const { theme, toggleTheme, stealth, toggleStealth } = useTheme();
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -405,6 +405,25 @@ function SettingsDropdown({
                 )}
                 <span>{theme === 'dark' ? '라이트 모드로 변경' : '다크 모드로 변경'}</span>
               </button>
+              <button
+                onClick={toggleStealth}
+                className="w-full flex items-center gap-3 px-3 py-2 text-sm rounded-lg transition-colors"
+                style={{
+                  color: 'var(--text-secondary)',
+                  background: 'transparent'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.color = 'var(--text-primary)';
+                  e.currentTarget.style.background = 'var(--bg-tertiary)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.color = 'var(--text-secondary)';
+                  e.currentTarget.style.background = 'transparent';
+                }}
+              >
+                {stealth ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+                <span>{stealth ? '시크릿 모드 끄기' : '시크릿 모드 켜기'}</span>
+              </button>
             </div>
 
             {/* 구분선 */}
@@ -482,7 +501,7 @@ export function Header() {
 
   return (
     <header 
-      className="backdrop-blur-md shadow-xl border-none z-50 relative transition-all duration-300"
+      className="stealth-header backdrop-blur-md shadow-xl border-none z-50 relative transition-all duration-300"
       style={{ 
         background: 'var(--bg-primary)'
       }}
@@ -604,7 +623,7 @@ export function Header() {
             )}
           </button>
           {/* 설정 드롭다운 */}
-          {isClient && (
+          {isClient && !isCollapsed && (
             <SettingsDropdown
               isOpen={isSettingsOpen}
               onToggle={() => setIsSettingsOpen(!isSettingsOpen)}

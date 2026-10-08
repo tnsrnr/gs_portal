@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { ArrowLeft, BookOpen, Eye, EyeOff, RotateCcw, ChevronLeft, ChevronRight, Edit, Save, X, Table2, Plus, ClipboardPaste, Bold, Italic, Underline } from "lucide-react";
+import { ArrowLeft, BookOpen, Eye, EyeOff, RotateCcw, ChevronLeft, ChevronRight, Edit, Save, X, Plus, Bold, Italic, Underline } from "lucide-react";
 import { motion } from "framer-motion";
 import { useRouter, usePathname } from 'next/navigation';
 import { useTheme } from '@/common/hooks/useTheme';
@@ -53,13 +53,6 @@ export default function StudyPage() {
   // 학습 세션 추적
   const [studyStartTime, setStudyStartTime] = useState<Date | null>(null); // 학습 시작 시간
   const [showCompletionModal, setShowCompletionModal] = useState<boolean>(false); // 완료 모달 표시
-  
-  // 비교표 팝업
-  const [showTableModal, setShowTableModal] = useState<boolean>(false); // 비교표 팝업 표시
-  const [tableRows, setTableRows] = useState<number>(3); // 표 행 개수
-  const [tableCols, setTableCols] = useState<number>(4); // 표 열 개수
-  const [tableData, setTableData] = useState<string[][]>([]); // 표 데이터
-
   useEffect(() => {
     fetchTopics();
   }, []);
@@ -86,7 +79,7 @@ export default function StudyPage() {
 
   // 학습 중 키보드 단축키 (엔터/스페이스: 다음, 화살표: 이전/다음)
   useEffect(() => {
-    if (showSettings || editingField || showTableModal || isEditModalOpen || showCompletionModal) return;
+    if (showSettings || editingField || isEditModalOpen || showCompletionModal) return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
       // 엔터 또는 스페이스: 다음 버튼
@@ -108,7 +101,7 @@ export default function StudyPage() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [showSettings, editingField, showTableModal, isEditModalOpen, showCompletionModal, currentIndex, studyMode, studiedTopics, topics, selectedCategories]);
+  }, [showSettings, editingField, isEditModalOpen, showCompletionModal, currentIndex, studyMode, studiedTopics, topics, selectedCategories]);
 
   const fetchTopics = async () => {
     setLoading(true);
@@ -255,219 +248,6 @@ export default function StudyPage() {
     setShowAnswer(false);
   };
 
-  // 비교표 팝업 열기
-  const openTableModal = () => {
-    setShowTableModal(true);
-    // 기본 3행 4열로 초기화
-    const initialData: string[][] = [];
-    for (let i = 0; i < tableRows; i++) {
-      initialData.push(Array(tableCols).fill(''));
-    }
-    setTableData(initialData);
-  };
-
-  // 표 크기 변경 시 데이터 초기화
-  useEffect(() => {
-    if (showTableModal) {
-      setTableData(prev => {
-        const newData: string[][] = [];
-        for (let i = 0; i < tableRows; i++) {
-          if (prev[i]) {
-            // 기존 데이터가 있으면 유지하고, 부족한 열은 빈 문자열로 채움
-            const row = [...prev[i]];
-            while (row.length < tableCols) {
-              row.push('');
-            }
-            newData.push(row.slice(0, tableCols));
-          } else {
-            newData.push(Array(tableCols).fill(''));
-          }
-        }
-        return newData;
-      });
-    }
-  }, [tableRows, tableCols, showTableModal]);
-
-  // 표 데이터 변경
-  const updateTableCell = (row: number, col: number, value: string) => {
-    const newData = [...tableData];
-    if (!newData[row]) {
-      newData[row] = Array(tableCols).fill('');
-    }
-    newData[row][col] = value;
-    setTableData(newData);
-  };
-
-  // 실제 텍스트 너비 측정 함수 (Canvas 사용)
-  const measureTextWidth = (text: string, fontSize: number = 14, fontFamily: string = 'system-ui, -apple-system, sans-serif'): number => {
-    // Canvas를 사용해서 정확한 텍스트 너비 측정
-    const canvas = document.createElement('canvas');
-    const context = canvas.getContext('2d');
-    if (!context) return text.length * 8; // 폴백
-    
-    context.font = `${fontSize}px ${fontFamily}`;
-    return context.measureText(text).width;
-  };
-
-  // 마크다운 테이블 생성
-  const generateMarkdownTable = (): string => {
-    if (tableData.length === 0) return '';
-    
-    // 현재 토픽명 가져오기
-    const currentTopic = getCurrentTopic();
-    const topicName = currentTopic?.topic || '비교표';
-    
-    // 모든 행을 정규화 (열 개수 맞추기)
-    const normalizedData: string[][] = [];
-    const maxCols = Math.max(...tableData.map(row => row.length), tableCols);
-    
-    tableData.forEach(row => {
-      const filledRow = [...row];
-      while (filledRow.length < maxCols) {
-        filledRow.push('');
-      }
-      normalizedData.push(filledRow.slice(0, maxCols));
-    });
-    
-    if (normalizedData.length === 0) return '';
-    
-    // 각 열의 최대 텍스트 너비 계산 (실제 DOM 측정)
-    const colWidths: number[] = [];
-    const fontSize = 14; // 기본 폰트 크기
-    const fontFamily = 'system-ui, -apple-system, sans-serif';
-    
-    for (let col = 0; col < maxCols; col++) {
-      let maxWidth = 0;
-      normalizedData.forEach(row => {
-        const cellText = String(row[col] || '').trim();
-        if (cellText) {
-          const width = measureTextWidth(cellText, fontSize, fontFamily);
-          maxWidth = Math.max(maxWidth, width);
-        }
-      });
-      // 최소 너비는 빈 셀 기준으로 설정
-      colWidths[col] = Math.max(measureTextWidth(' ', fontSize, fontFamily) * 3, maxWidth);
-    }
-    
-    // 셀 내용을 패딩하는 함수 (실제 너비 측정 기반)
-    const padCell = (text: string, targetWidth: number): string => {
-      const trimmed = String(text || '').trim();
-      if (!trimmed) return ' '.repeat(Math.ceil(targetWidth / measureTextWidth(' ', fontSize, fontFamily)));
-      
-      const currentWidth = measureTextWidth(trimmed, fontSize, fontFamily);
-      const spaceWidth = measureTextWidth(' ', fontSize, fontFamily);
-      const paddingCount = Math.max(0, Math.ceil((targetWidth - currentWidth) / spaceWidth));
-      
-      return trimmed + ' '.repeat(paddingCount);
-    };
-    
-    let markdown = '\n';
-    
-    // 표 제목 추가
-    markdown += `[${topicName} 비교표]\n\n`;
-    
-    // 고정 구분선 길이 (135자)
-    const separatorLine = '-'.repeat(135) + '\n';
-    
-    // 헤더 구분: 이중선 + 헤더 + 엔터 + 이중선
-    const doubleLine = '='.repeat(80) + '\n';
-    const headerRow = normalizedData[0] || [];
-    
-    markdown += doubleLine; // 이중선
-    markdown += ' ' + headerRow.map((cell, idx) => padCell(cell, colWidths[idx])).join(' | ') + ' \n'; // 헤더
-    markdown += '\n'; // 엔터 (빈 줄)
-    markdown += doubleLine; // 이중선
-    
-    // 나머지 행들 (각 행 사이에 대시 구분선 추가, 앞뒤 파이프 제거)
-    for (let i = 1; i < normalizedData.length; i++) {
-      const row = normalizedData[i] || [];
-      markdown += ' ' + row.map((cell, idx) => padCell(cell, colWidths[idx])).join(' | ') + ' \n';
-      // 마지막 행이 아니면 대시 구분선 추가 (파이프 없이)
-      if (i < normalizedData.length - 1) {
-        markdown += separatorLine;
-      }
-    }
-    
-    // 맨 아래 구분선
-    markdown += separatorLine;
-    
-    return markdown;
-  };
-
-  // 엑셀 붙여넣기 처리
-  const handlePasteFromExcel = async () => {
-    try {
-      const text = await navigator.clipboard.readText();
-      if (!text) {
-        alert('클립보드에 데이터가 없습니다.');
-        return;
-      }
-      
-      // 탭과 줄바꿈으로 데이터 파싱
-      const lines = text.split(/\r?\n/).filter(line => line.trim() !== '');
-      if (lines.length === 0) {
-        alert('붙여넣을 데이터가 없습니다.');
-        return;
-      }
-      
-      const parsedData: string[][] = [];
-      let maxCols = 0;
-      
-      lines.forEach(line => {
-        // 탭으로 구분 (탭이 없으면 공백으로 구분 시도)
-        const cells = line.includes('\t') 
-          ? line.split('\t').map(cell => cell.trim())
-          : line.split(/\s{2,}/).map(cell => cell.trim()); // 연속된 공백으로 구분
-        
-        if (cells.length > 0) {
-          parsedData.push(cells);
-          maxCols = Math.max(maxCols, cells.length);
-        }
-      });
-      
-      if (parsedData.length === 0) {
-        alert('데이터를 파싱할 수 없습니다.');
-        return;
-      }
-      
-      // 행/열 개수 자동 조정
-      setTableRows(parsedData.length);
-      setTableCols(maxCols);
-      
-      // 데이터 채우기 (부족한 열은 빈 문자열로 채움)
-      const filledData = parsedData.map(row => {
-        const filledRow = [...row];
-        while (filledRow.length < maxCols) {
-          filledRow.push('');
-        }
-        return filledRow.slice(0, maxCols);
-      });
-      
-      setTableData(filledData);
-      alert(`${parsedData.length}행 ${maxCols}열 데이터가 붙여넣기 되었습니다.`);
-    } catch (error) {
-      console.error('Paste error:', error);
-      alert('붙여넣기 중 오류가 발생했습니다. 클립보드 접근 권한을 확인해주세요.');
-    }
-  };
-
-  // 비교표 적용
-  const applyTable = () => {
-    const currentTopic = getCurrentTopic();
-    if (!currentTopic) return;
-    
-    const markdownTable = generateMarkdownTable();
-    const currentValue = currentTopic.viewtable || '';
-    // 기존 값과 표 사이를 "한 줄"만 띄우기
-    const normalizedCurrent = currentValue ? currentValue.replace(/\n+$/, '\n') : '';
-    const normalizedTable = markdownTable.replace(/^\n+/, '\n');
-    const newValue = normalizedCurrent + normalizedTable;
-    
-    // viewtable 편집 모드로 전환
-    startEdit('viewtable', newValue);
-    setShowTableModal(false);
-  };
-
   // 인라인 편집 시작
   const startEdit = (field: string, currentValue: string) => {
     setEditingField(field);
@@ -585,7 +365,7 @@ export default function StudyPage() {
 
   return (
     <div 
-      className="min-h-screen relative overflow-hidden"
+      className="stealth-page min-h-screen relative overflow-hidden"
       style={{ 
         background: 'var(--bg-primary)',
         paddingTop: '64px',
@@ -593,7 +373,7 @@ export default function StudyPage() {
       }}
     >
       {/* 레벨 2 패턴 배경 - 학습용 보라색 계열 */}
-      <div className="absolute inset-0" style={{ zIndex: 0 }}>
+      <div className="stealth-bg absolute inset-0" style={{ zIndex: 0 }}>
         {/* 기본 그라데이션 - 보라색 계열 */}
         <div className="absolute inset-0" style={{
           background: `
@@ -894,7 +674,7 @@ export default function StudyPage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.4 }}
-              className="bg-white rounded-lg shadow-sm border p-6"
+              className="stealth-card bg-white rounded-lg shadow-sm border p-6"
               style={{
                 background: 'var(--bg-card)',
                 borderColor: 'var(--border-color)',
@@ -912,7 +692,7 @@ export default function StudyPage() {
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2 flex-1">
-                        <BookOpen className="w-5 h-5" style={{ color: 'var(--accent-blue)' }} />
+                        <BookOpen className="stealth-hide w-5 h-5" style={{ color: 'var(--accent-blue)' }} />
                         {editingField === 'topic' ? (
                           <div className="flex items-center gap-2 flex-1">
                             <input
@@ -952,7 +732,7 @@ export default function StudyPage() {
                           </div>
                         ) : (
                           <h2 
-                            className="text-xl font-bold cursor-pointer hover:opacity-70 transition-opacity" 
+                            className="stealth-scope text-xl font-bold cursor-pointer hover:opacity-70 transition-opacity" 
                             style={{ color: 'var(--text-primary)' }}
                             onDoubleClick={() => startEdit('topic', currentTopic.topic)}
                             title="더블클릭하여 수정"
@@ -961,7 +741,7 @@ export default function StudyPage() {
                           </h2>
                         )}
                         {currentTopic.importance && (
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                          <span className={`stealth-hide px-2 py-1 rounded-full text-xs font-medium ${
                             currentTopic.importance === '상' ? 'bg-red-100 text-red-800' :
                             currentTopic.importance === '중' ? 'bg-yellow-100 text-yellow-800' :
                             'bg-gray-100 text-gray-800'
@@ -980,7 +760,7 @@ export default function StudyPage() {
                     </div>
 
                     {(currentTopic.topics_loc || currentTopic.topics_eng) && (
-                      <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                      <p className="stealth-scope text-sm" style={{ color: 'var(--text-secondary)' }}>
                         {currentTopic.topics_loc && currentTopic.topics_eng 
                           ? `${currentTopic.topics_loc} / ${currentTopic.topics_eng}`
                           : currentTopic.topics_loc || currentTopic.topics_eng}
@@ -1093,7 +873,7 @@ export default function StudyPage() {
                           </div>
                         ) : (
                           <div 
-                            className="p-3 rounded cursor-pointer hover:opacity-70 transition-opacity" 
+                            className="stealth-scope p-3 rounded cursor-pointer hover:opacity-70 transition-opacity" 
                             style={{ background: 'var(--bg-tertiary)' }}
                             onDoubleClick={() => startEdit('definition', currentTopic.definition || '')}
                             title="더블클릭하여 수정"
@@ -1459,7 +1239,7 @@ export default function StudyPage() {
                       </div>
                     ) : (
                       <div 
-                        className="p-3 rounded cursor-pointer hover:opacity-70 transition-opacity" 
+                        className="stealth-scope p-3 rounded cursor-pointer hover:opacity-70 transition-opacity" 
                         style={{ background: 'var(--bg-tertiary)' }}
                         onDoubleClick={() => startEdit('additional_info', currentTopic.additional_info || '')}
                         title="더블클릭하여 수정"
@@ -1647,289 +1427,6 @@ export default function StudyPage() {
               <p style={{ color: 'var(--text-secondary)' }}>학습할 토픽이 없습니다.</p>
             </div>
           )}
-
-          {/* 비교표 추가 버튼 (좌측 하단) */}
-          {!showSettings && currentTopic && (
-            <motion.button
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.9 }}
-              onClick={openTableModal}
-              className="fixed bottom-6 left-6 z-50 p-4 rounded-full shadow-lg border"
-              style={{
-                background: 'linear-gradient(135deg, rgba(147, 51, 234, 0.9) 0%, rgba(168, 85, 247, 0.9) 100%)',
-                borderColor: 'var(--border-color)',
-                color: 'white'
-              }}
-              title="비교표 추가"
-            >
-              <Table2 className="w-6 h-6" />
-            </motion.button>
-          )}
-
-          {/* 비교표 팝업 */}
-          <Dialog open={showTableModal} onOpenChange={setShowTableModal}>
-            <DialogContent 
-              className="p-6 max-w-4xl h-[80vh] flex flex-col"
-              style={{
-                background: 'var(--bg-card)',
-                borderColor: 'var(--border-color)'
-              }}
-            >
-              {/* 고정 헤더 영역 */}
-              <div className="flex-shrink-0 mb-4 pb-4 border-b" style={{ borderColor: 'var(--border-color)' }}>
-                <h2 className="text-2xl font-bold mb-4" style={{ color: 'var(--text-primary)' }}>
-                  비교표 추가
-                </h2>
-                
-                {/* 표 크기 설정 - 고정 위치 */}
-                <div className="flex items-center gap-4">
-                  <div>
-                    <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-primary)' }}>
-                      행 개수
-                    </label>
-                    <input
-                      type="number"
-                      min="2"
-                      max="20"
-                      value={tableRows}
-                      onChange={(e) => {
-                        const newValue = parseInt(e.target.value) || 2;
-                        setTableRows(newValue);
-                      }}
-                      className="w-20 px-3 py-2 rounded-lg border"
-                      style={{
-                        background: 'var(--bg-tertiary)',
-                        borderColor: 'var(--border-color)',
-                        color: 'var(--text-primary)'
-                      }}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-primary)' }}>
-                      열 개수
-                    </label>
-                    <input
-                      type="number"
-                      min="2"
-                      max="10"
-                      value={tableCols}
-                      onChange={(e) => {
-                        const newValue = parseInt(e.target.value) || 2;
-                        setTableCols(newValue);
-                      }}
-                      className="w-20 px-3 py-2 rounded-lg border"
-                      style={{
-                        background: 'var(--bg-tertiary)',
-                        borderColor: 'var(--border-color)',
-                        color: 'var(--text-primary)'
-                      }}
-                    />
-                  </div>
-                  <div className="flex-1" />
-                  <motion.button
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={handlePasteFromExcel}
-                    className="px-4 py-2 rounded-lg font-medium border flex items-center gap-2"
-                    style={{
-                      background: 'var(--bg-tertiary)',
-                      borderColor: 'var(--border-color)',
-                      color: 'var(--text-primary)'
-                    }}
-                    title="엑셀/클립보드에서 데이터 붙여넣기 (Ctrl+V)"
-                  >
-                    <ClipboardPaste className="w-4 h-4" />
-                    엑셀 붙여넣기
-                  </motion.button>
-                </div>
-              </div>
-
-              {/* 스크롤 가능한 콘텐츠 영역 */}
-              <div className="flex-1 overflow-y-auto space-y-4 pr-2 min-h-0">
-
-                {/* 표 입력 영역 - 스크롤 가능 */}
-                <div 
-                  className="border rounded-lg p-4 overflow-x-auto overflow-y-auto" 
-                  style={{ 
-                    background: 'var(--bg-tertiary)',
-                    borderColor: 'var(--border-color)',
-                    maxHeight: '300px',
-                    minHeight: '100px'
-                  }}
-                  onPaste={(e) => {
-                    e.preventDefault();
-                    const text = e.clipboardData.getData('text');
-                    if (text) {
-                      // 탭과 줄바꿈으로 데이터 파싱
-                      const lines = text.split(/\r?\n/).filter(line => line.trim() !== '');
-                      if (lines.length === 0) return;
-                      
-                      const parsedData: string[][] = [];
-                      let maxCols = 0;
-                      
-                      lines.forEach(line => {
-                        const cells = line.includes('\t') 
-                          ? line.split('\t').map(cell => cell.trim())
-                          : line.split(/\s{2,}/).map(cell => cell.trim());
-                        
-                        if (cells.length > 0) {
-                          parsedData.push(cells);
-                          maxCols = Math.max(maxCols, cells.length);
-                        }
-                      });
-                      
-                      if (parsedData.length > 0) {
-                        setTableRows(parsedData.length);
-                        setTableCols(maxCols);
-                        
-                        const filledData = parsedData.map(row => {
-                          const filledRow = [...row];
-                          while (filledRow.length < maxCols) {
-                            filledRow.push('');
-                          }
-                          return filledRow.slice(0, maxCols);
-                        });
-                        
-                        setTableData(filledData);
-                      }
-                    }
-                  }}
-                >
-                  {(() => {
-                    // 각 열의 최대 너비 계산 (한글 고려)
-                    const calculateTextWidth = (text: string): number => {
-                      return Array.from(text).reduce((acc, char) => {
-                        return acc + (char.charCodeAt(0) > 127 ? 2 : 1);
-                      }, 0);
-                    };
-                    
-                    const colMaxWidths: number[] = [];
-                    for (let col = 0; col < tableCols; col++) {
-                      let maxWidth = 0;
-                      tableData.forEach(row => {
-                        const cellValue = String(row[col] || '').trim();
-                        const width = calculateTextWidth(cellValue);
-                        maxWidth = Math.max(maxWidth, width);
-                      });
-                      // 최소 5자, 최대 30자
-                      colMaxWidths[col] = Math.max(5, Math.min(maxWidth, 30));
-                    }
-                    
-                    // 모든 열의 최대 너비 중 최대값 찾기
-                    const globalMaxWidth = Math.max(...colMaxWidths, 10);
-                    
-                    // 각 열의 고정 너비 계산 (한글 고려하여 더 정확하게)
-                    const columnWidth = Math.max(150, globalMaxWidth * 10 + 60); // 최소 150px, 한글 고려하여 여유있게
-                    
-                    return (
-                      <table 
-                        className="border-collapse" 
-                        style={{ 
-                          tableLayout: 'fixed',
-                          width: `${columnWidth * tableCols}px`,
-                          minWidth: `${columnWidth * tableCols}px`
-                        }}
-                      >
-                        <colgroup>
-                          {Array.from({ length: tableCols }).map((_, colIndex) => (
-                            <col 
-                              key={colIndex} 
-                              style={{ 
-                                width: `${columnWidth}px`,
-                                minWidth: `${columnWidth}px`,
-                                maxWidth: `${columnWidth}px`
-                              }}
-                            />
-                          ))}
-                        </colgroup>
-                        <tbody>
-                          {tableData.map((row, rowIndex) => (
-                            <tr key={rowIndex}>
-                              {Array.from({ length: tableCols }).map((_, colIndex) => (
-                                <td 
-                                  key={colIndex} 
-                                  className="p-2 border" 
-                                  style={{ 
-                                    borderColor: 'var(--border-color)',
-                                    width: `${columnWidth}px`,
-                                    minWidth: `${columnWidth}px`,
-                                    maxWidth: `${columnWidth}px`
-                                  }}
-                                >
-                                  <input
-                                    type="text"
-                                    value={tableData[rowIndex]?.[colIndex] || ''}
-                                    onChange={(e) => updateTableCell(rowIndex, colIndex, e.target.value)}
-                                    className="w-full px-2 py-1 rounded border text-sm"
-                                    style={{
-                                      background: 'var(--bg-card)',
-                                      borderColor: 'var(--border-color)',
-                                      color: 'var(--text-primary)',
-                                      width: '100%',
-                                      boxSizing: 'border-box'
-                                    }}
-                                    placeholder={`${rowIndex === 0 ? '헤더' : '데이터'}`}
-                                  />
-                                </td>
-                              ))}
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    );
-                  })()}
-                </div>
-
-                {/* 미리보기 */}
-                <div className="border rounded-lg p-4 overflow-x-auto" style={{ 
-                  background: 'var(--bg-tertiary)',
-                  borderColor: 'var(--border-color)'
-                }}>
-                  <h3 className="text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>
-                    미리보기
-                  </h3>
-                  <div className="text-xs font-mono whitespace-pre overflow-x-auto" style={{ 
-                    color: 'var(--text-secondary)',
-                    minWidth: '100%',
-                    width: 'max-content'
-                  }}>
-                    {generateMarkdownTable() || '(표를 입력하세요)'}
-                  </div>
-                </div>
-
-              </div>
-
-              {/* 고정 버튼 영역 */}
-              <div className="flex-shrink-0 pt-4 border-t flex gap-2 justify-end" style={{ borderColor: 'var(--border-color)' }}>
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => setShowTableModal(false)}
-                  className="px-4 py-2 rounded-lg font-medium border"
-                  style={{
-                    background: 'var(--bg-tertiary)',
-                    borderColor: 'var(--border-color)',
-                    color: 'var(--text-secondary)'
-                  }}
-                >
-                  취소
-                </motion.button>
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={applyTable}
-                  className="px-4 py-2 rounded-lg font-medium text-white"
-                  style={{
-                    background: 'linear-gradient(135deg, rgba(147, 51, 234, 0.8) 0%, rgba(168, 85, 247, 0.8) 100%)'
-                  }}
-                >
-                  적용
-                </motion.button>
-              </div>
-            </DialogContent>
-          </Dialog>
 
           {/* 수정 모달 */}
           <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
