@@ -119,6 +119,41 @@
   background: #0f172a !important;
 }
 
+/* 시크릿 모드: 접힌 헤더는 공간을 차지하지 않고 우측 상단에 떠 있음 */
+[data-stealth="true"] .stealth-header-collapsed {
+  position: absolute !important;
+  top: 0;
+  right: 0;
+  background: transparent !important;
+  backdrop-filter: none !important;
+}
+
+/* 시크릿 모드: 상하 여백 제거, 카드가 화면 높이를 채움 */
+[data-stealth="true"] .stealth-page {
+  padding-top: 0 !important;
+  min-height: 0 !important;
+  height: 100%;
+}
+
+[data-stealth="true"] .stealth-fill {
+  min-height: 0 !important;
+  height: 100%;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+}
+
+[data-stealth="true"] .stealth-card {
+  height: 100% !important;
+  min-height: 0 !important;
+  padding-top: 0.75rem !important;
+  padding-bottom: 0.75rem !important;
+}
+
+[data-stealth="true"] .stealth-card > div:first-child {
+  max-height: none !important;
+  min-height: 0;
+}
+
 [data-stealth="true"] .stealth-header > div > div > button,
 [data-stealth="true"] .stealth-header > div > div > .relative > button {
   background: transparent !important;

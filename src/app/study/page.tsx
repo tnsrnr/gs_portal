@@ -413,8 +413,8 @@ export default function StudyPage() {
         }}></div>
       </div>
 
-      <div className="relative min-h-[calc(100vh-64px)] p-3 space-y-3" style={{ zIndex: 0 }}>
-        <div className="mx-auto" style={{ maxWidth: 'calc(56rem * 1.2)' }}>
+      <div className="stealth-fill relative min-h-[calc(100vh-64px)] p-3 space-y-3" style={{ zIndex: 0 }}>
+        <div className="stealth-fill mx-auto" style={{ maxWidth: 'calc(56rem * 1.2)' }}>
           {/* 설정 화면 */}
           {showSettings ? (
             <motion.div

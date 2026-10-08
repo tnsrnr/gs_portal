@@ -501,7 +501,7 @@ export function Header() {
 
   return (
     <header 
-      className="stealth-header backdrop-blur-md shadow-xl border-none z-50 relative transition-all duration-300"
+      className={`stealth-header ${isCollapsed ? 'stealth-header-collapsed' : ''} backdrop-blur-md shadow-xl border-none z-50 relative transition-all duration-300`}
       style={{ 
         background: 'var(--bg-primary)'
       }}
