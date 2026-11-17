@@ -41,6 +41,12 @@ function MenuItem({ menu, pathname }: {
         hover: 'rgba(147, 51, 234, 0.15)',
         gradient: 'linear-gradient(135deg, rgba(147, 51, 234, 0.08) 0%, rgba(147, 51, 234, 0.12) 100%)'
       };
+      case '학습 2': return {
+        primary: '#f59e0b',
+        secondary: 'rgba(245, 158, 11, 0.1)',
+        hover: 'rgba(245, 158, 11, 0.15)',
+        gradient: 'linear-gradient(135deg, rgba(245, 158, 11, 0.08) 0%, rgba(245, 158, 11, 0.12) 100%)'
+      };
       case '통계': return {
         primary: '#f97316', // orange
         secondary: 'rgba(249, 115, 22, 0.1)',
@@ -84,7 +90,7 @@ function MenuItem({ menu, pathname }: {
   const dropdownRef = useRef<HTMLDivElement>(null);
   const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const { theme } = useTheme();
-  const isActive = pathname === menu.path || (menu.submenu && menu.submenu.some((sub: any) => pathname === sub.path));
+  const isActive = pathname === menu.path || pathname.startsWith(`${menu.path}/`) || (menu.submenu && menu.submenu.some((sub: any) => pathname === sub.path));
   const menuColor = getMenuColor(menu.name);
   
   useEffect(() => {
