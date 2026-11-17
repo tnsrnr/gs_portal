@@ -33,6 +33,7 @@ import { storyTermsDocument } from '../story-terms-content';
 import { roadmaps, type Roadmap } from '../roadmaps';
 import { termRoadmaps } from '../term-roadmaps';
 import { RoadmapView } from '../roadmap-view';
+import { FontStepControl, studyFontZoom, useStudyFont } from '../font-step';
 import { useTheme } from '@/common/hooks/useTheme';
 
 function escapeRegExp(value: string) {
@@ -119,6 +120,8 @@ export default function Study2DetailPage() {
   const params = useParams<{ slug: string }>();
   const router = useRouter();
   const { isDark } = useTheme();
+  const { size: fontSize, setSize: setFontSize } = useStudyFont();
+  const fontZoom = studyFontZoom(fontSize);
   const item = getTocItem(params.slug);
   const [mode, setMode] = useState<'read' | 'pdf'>('read');
   const [edition, setEdition] = useState<'easy' | 'summary' | 'roadmap' | 'terms'>('easy');
@@ -204,6 +207,7 @@ export default function Study2DetailPage() {
               {item?.label ?? '목차'}
             </h1>
           </div>
+          <FontStepControl size={fontSize} onChange={setFontSize} />
           {doc && (pack?.summary || pack?.roadmap) && (
             <div className="flex rounded-full border p-1" style={{ borderColor: 'var(--border-color)' }}>
               <button
@@ -321,7 +325,9 @@ export default function Study2DetailPage() {
         )}
 
         {showingRoadmap && pack?.roadmap && (
-          <RoadmapView roadmap={pack.roadmap} terms={pack.termRoadmap} isDark={isDark} />
+          <div style={{ zoom: fontZoom }}>
+            <RoadmapView roadmap={pack.roadmap} terms={pack.termRoadmap} isDark={isDark} />
+          </div>
         )}
 
         {doc && !showingRoadmap && mode === 'pdf' && (
@@ -334,7 +340,7 @@ export default function Study2DetailPage() {
         )}
 
         {doc && !showingRoadmap && mode === 'read' && (
-          <div className="grid gap-4 lg:grid-cols-[220px_minmax(0,1fr)]">
+          <div className="grid gap-4 lg:grid-cols-[220px_minmax(0,1fr)]" style={{ zoom: fontZoom }}>
             <aside className="lg:sticky lg:top-4 lg:max-h-[calc(100vh-120px)] lg:overflow-y-auto">
               <div className="rounded-2xl border p-3" style={{ background: 'var(--bg-card)', borderColor: 'var(--border-color)' }}>
                 {doc.chapters.map((chapter) => (
