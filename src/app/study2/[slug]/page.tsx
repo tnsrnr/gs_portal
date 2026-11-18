@@ -484,6 +484,7 @@ export default function Study2DetailPage() {
         <TopicPopup
           keyword={topicPopup.keyword}
           items={topicPopup.items}
+          zoom={fontZoom}
           onClose={() => setTopicPopup(null)}
         />
       )}

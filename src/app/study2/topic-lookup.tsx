@@ -65,10 +65,12 @@ export function useTopicIndex() {
 export function TopicPopup({
   keyword,
   items,
+  zoom,
   onClose,
 }: {
   keyword: string;
   items: TopicBrief[];
+  zoom: number;
   onClose: () => void;
 }) {
   const { isDark } = useTheme();
@@ -94,6 +96,7 @@ export function TopicPopup({
           background: isDark ? '#1e293b' : '#ffffff',
           borderColor: 'var(--border-color)',
           color: 'var(--text-primary)',
+          zoom,
         }}
         onClick={(event) => event.stopPropagation()}
       >
