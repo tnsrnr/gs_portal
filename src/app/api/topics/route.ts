@@ -36,10 +36,16 @@ export async function GET(request: NextRequest) {
     const definition = searchParams.get('definition');
     const cheatsheet = searchParams.get('cheatsheet');
     const additional_info = searchParams.get('additional_info');
+    const slim = searchParams.get('slim') === '1';
     
     // 기본 쿼리: 모든 토픽을 카테고리 순으로 조회
-    // SELECT * FROM topics WHERE 1=1 ORDER BY category_l1, category_l2, topic
-    let query = `
+    // slim=1 은 약어 팝업용으로 영문명·정의만 가져온다.
+    let query = slim
+      ? `
+      SELECT topic, topics_eng, definition FROM topics 
+      WHERE 1=1 
+    `
+      : `
       SELECT * FROM topics 
       WHERE 1=1 
     `;

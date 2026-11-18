@@ -34,6 +34,7 @@ import { roadmaps, type Roadmap } from '../roadmaps';
 import { termRoadmaps } from '../term-roadmaps';
 import { RoadmapView } from '../roadmap-view';
 import { FontStepControl, studyFontZoom, useStudyFont } from '../font-step';
+import { TopicPopup, useTopicIndex, type TopicBrief } from '../topic-lookup';
 import { useTheme } from '@/common/hooks/useTheme';
 
 function escapeRegExp(value: string) {
@@ -57,11 +58,15 @@ function KeywordText({
   keywords,
   active,
   isDark,
+  topicIndex,
+  onTopic,
 }: {
   text: string;
   keywords: string[];
   active: string | null;
   isDark: boolean;
+  topicIndex: Map<string, TopicBrief[]>;
+  onTopic: (keyword: string, items: TopicBrief[]) => void;
 }) {
   const nodes = useMemo(() => {
     const source = active ? keywords.filter((keyword) => keyword === active) : keywords;
@@ -91,20 +96,40 @@ function KeywordText({
         typeof part === 'string' ? (
           <span key={index}>{part}</span>
         ) : (
-          <mark
-            key={index}
-            data-keyword={part.keyword}
-            style={{
-              background: isDark ? 'rgba(251, 191, 36, 0.28)' : '#fde68a',
-              color: isDark ? '#fff7d6' : '#92400e',
-              fontWeight: 800,
-              borderRadius: 6,
-              padding: '0 4px',
-              boxShadow: isDark ? 'inset 0 -2px 0 #fbbf24' : 'inset 0 -2px 0 #d97706',
-            }}
-          >
-            {part.keyword}
-          </mark>
+          (() => {
+            const hits = topicIndex.get(part.keyword.toLowerCase());
+            return (
+              <mark
+                key={index}
+                data-keyword={part.keyword}
+                role={hits ? 'button' : undefined}
+                tabIndex={hits ? 0 : undefined}
+                title={hits ? '약어 정의' : undefined}
+                onClick={hits ? () => onTopic(part.keyword, hits) : undefined}
+                onKeyDown={
+                  hits
+                    ? (event) => {
+                        if (event.key === 'Enter' || event.key === ' ') {
+                          event.preventDefault();
+                          onTopic(part.keyword, hits);
+                        }
+                      }
+                    : undefined
+                }
+                style={{
+                  background: isDark ? 'rgba(251, 191, 36, 0.28)' : '#fde68a',
+                  color: isDark ? '#fff7d6' : '#92400e',
+                  fontWeight: 800,
+                  borderRadius: 6,
+                  padding: '0 4px',
+                  boxShadow: isDark ? 'inset 0 -2px 0 #fbbf24' : 'inset 0 -2px 0 #d97706',
+                  cursor: hits ? 'pointer' : undefined,
+                }}
+              >
+                {part.keyword}
+              </mark>
+            );
+          })()
         )
       )}
     </>
@@ -122,6 +147,8 @@ export default function Study2DetailPage() {
   const { isDark } = useTheme();
   const { size: fontSize, setSize: setFontSize } = useStudyFont();
   const fontZoom = studyFontZoom(fontSize);
+  const topicIndex = useTopicIndex();
+  const [topicPopup, setTopicPopup] = useState<{ keyword: string; items: TopicBrief[] } | null>(null);
   const item = getTocItem(params.slug);
   const [mode, setMode] = useState<'read' | 'pdf'>('read');
   const [edition, setEdition] = useState<'easy' | 'summary' | 'roadmap' | 'terms'>('easy');
@@ -424,7 +451,7 @@ export default function Study2DetailPage() {
                               className="rounded-xl px-4 py-3 text-sm leading-7"
                               style={{ background: isDark ? 'rgba(245, 158, 11, 0.12)' : '#fffbeb' }}
                             >
-                              <KeywordText text={block.text} keywords={doc.keywords} active={activeKeyword} isDark={isDark} />
+                              <KeywordText text={block.text} keywords={doc.keywords} active={activeKeyword} isDark={isDark} topicIndex={topicIndex} onTopic={(keyword, items) => setTopicPopup({ keyword, items })} />
                             </p>
                           );
                         }
@@ -432,13 +459,13 @@ export default function Study2DetailPage() {
                           return (
                             <p key={index} className="pl-1">
                               <span className="mr-2 font-bold text-amber-500">·</span>
-                              <KeywordText text={block.text} keywords={doc.keywords} active={activeKeyword} isDark={isDark} />
+                              <KeywordText text={block.text} keywords={doc.keywords} active={activeKeyword} isDark={isDark} topicIndex={topicIndex} onTopic={(keyword, items) => setTopicPopup({ keyword, items })} />
                             </p>
                           );
                         }
                         return (
                           <p key={index}>
-                            <KeywordText text={block.text} keywords={doc.keywords} active={activeKeyword} isDark={isDark} />
+                            <KeywordText text={block.text} keywords={doc.keywords} active={activeKeyword} isDark={isDark} topicIndex={topicIndex} onTopic={(keyword, items) => setTopicPopup({ keyword, items })} />
                           </p>
                         );
                       })}
@@ -453,6 +480,13 @@ export default function Study2DetailPage() {
           </div>
         )}
       </div>
+      {topicPopup && (
+        <TopicPopup
+          keyword={topicPopup.keyword}
+          items={topicPopup.items}
+          onClose={() => setTopicPopup(null)}
+        />
+      )}
     </div>
   );
 }
