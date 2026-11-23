@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useTheme } from '@/common/hooks/useTheme';
+import type { StrategyWord } from './strategy-words';
 
 export type TopicBrief = {
   topic: string;
@@ -126,6 +127,89 @@ export function TopicPopup({
               )}
               <p className="mt-1 text-sm leading-6" style={{ color: 'var(--text-secondary)' }}>
                 {item.definition || '등록된 정의 없음'}
+              </p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function EnglishWordPopup({
+  keyword,
+  words,
+  zoom,
+  onClose,
+}: {
+  keyword: string;
+  words: StrategyWord[];
+  zoom: number;
+  onClose: () => void;
+}) {
+  const { isDark } = useTheme();
+  const single = words.length === 1 ? words[0] : null;
+
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="absolute inset-0 bg-black/40" />
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={`${keyword} 영어`}
+        className="relative max-h-[70vh] w-full max-w-lg overflow-y-auto rounded-2xl border p-5 shadow-xl"
+        style={{
+          background: isDark ? '#1e293b' : '#ffffff',
+          borderColor: 'var(--border-color)',
+          color: 'var(--text-primary)',
+          zoom,
+        }}
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <h2 className="min-w-0 text-lg font-bold">
+            {single ? (
+              <>
+                {single.word}{' '}
+                <span className="font-medium" style={{ color: 'var(--text-secondary)' }}>
+                  ({single.reading}, {single.meaning})
+                </span>
+              </>
+            ) : (
+              keyword
+            )}
+          </h2>
+          <button
+            type="button"
+            onClick={onClose}
+            className="shrink-0 rounded-full px-2 py-1 text-sm"
+            style={{ color: 'var(--text-secondary)' }}
+            aria-label="닫기"
+          >
+            닫기
+          </button>
+        </div>
+        <div className="space-y-4">
+          {words.map((item) => (
+            <div key={item.word}>
+              {!single && (
+                <p className="text-sm font-bold">
+                  {item.word}{' '}
+                  <span className="font-medium" style={{ color: 'var(--text-secondary)' }}>
+                    ({item.reading}, {item.meaning})
+                  </span>
+                </p>
+              )}
+              <p className="mt-1 text-sm leading-6" style={{ color: 'var(--text-secondary)' }}>
+                {item.examples.join(' · ')}
               </p>
             </div>
           ))}

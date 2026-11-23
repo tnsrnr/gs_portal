@@ -33,8 +33,11 @@ import { storyTermsDocument } from '../story-terms-content';
 import { roadmaps, type Roadmap } from '../roadmaps';
 import { termRoadmaps } from '../term-roadmaps';
 import { RoadmapView } from '../roadmap-view';
+import { studyWords } from '../study-words';
 import { FontStepControl, studyFontZoom, useStudyFont } from '../font-step';
-import { TopicPopup, useTopicIndex, type TopicBrief } from '../topic-lookup';
+import { EnglishWordPopup, TopicPopup, useTopicIndex, type TopicBrief } from '../topic-lookup';
+import { lookupEnglishWords } from '../study-words';
+import type { StrategyWord } from '../strategy-words';
 import { useTheme } from '@/common/hooks/useTheme';
 
 function escapeRegExp(value: string) {
@@ -53,20 +56,26 @@ function keywordPattern(keyword: string) {
   return `${before}${escapeRegExp(keyword)}${after}`;
 }
 
+function keywordCanOpen(keyword: string, topicIndex: Map<string, TopicBrief[]>) {
+  const hits = topicIndex.get(keyword.toLowerCase());
+  if (hits?.some((item) => item.definition || item.topics_eng)) return true;
+  return lookupEnglishWords(keyword).length > 0;
+}
+
 function KeywordText({
   text,
   keywords,
   active,
   isDark,
   topicIndex,
-  onTopic,
+  onOpen,
 }: {
   text: string;
   keywords: string[];
   active: string | null;
   isDark: boolean;
   topicIndex: Map<string, TopicBrief[]>;
-  onTopic: (keyword: string, items: TopicBrief[]) => void;
+  onOpen: (keyword: string) => void;
 }) {
   const nodes = useMemo(() => {
     const source = active ? keywords.filter((keyword) => keyword === active) : keywords;
@@ -97,21 +106,21 @@ function KeywordText({
           <span key={index}>{part}</span>
         ) : (
           (() => {
-            const hits = topicIndex.get(part.keyword.toLowerCase());
+            const open = keywordCanOpen(part.keyword, topicIndex);
             return (
               <mark
                 key={index}
                 data-keyword={part.keyword}
-                role={hits ? 'button' : undefined}
-                tabIndex={hits ? 0 : undefined}
-                title={hits ? '약어 정의' : undefined}
-                onClick={hits ? () => onTopic(part.keyword, hits) : undefined}
+                role={open ? 'button' : undefined}
+                tabIndex={open ? 0 : undefined}
+                title={open ? '뜻 보기' : undefined}
+                onClick={open ? () => onOpen(part.keyword) : undefined}
                 onKeyDown={
-                  hits
+                  open
                     ? (event) => {
                         if (event.key === 'Enter' || event.key === ' ') {
                           event.preventDefault();
-                          onTopic(part.keyword, hits);
+                          onOpen(part.keyword);
                         }
                       }
                     : undefined
@@ -123,7 +132,7 @@ function KeywordText({
                   borderRadius: 6,
                   padding: '0 4px',
                   boxShadow: isDark ? 'inset 0 -2px 0 #fbbf24' : 'inset 0 -2px 0 #d97706',
-                  cursor: hits ? 'pointer' : undefined,
+                  cursor: open ? 'pointer' : undefined,
                 }}
               >
                 {part.keyword}
@@ -149,6 +158,20 @@ export default function Study2DetailPage() {
   const fontZoom = studyFontZoom(fontSize);
   const topicIndex = useTopicIndex();
   const [topicPopup, setTopicPopup] = useState<{ keyword: string; items: TopicBrief[] } | null>(null);
+  const [englishPopup, setEnglishPopup] = useState<{ keyword: string; words: StrategyWord[] } | null>(null);
+  const openKeywordInfo = (keyword: string) => {
+    const hits = topicIndex.get(keyword.toLowerCase());
+    if (hits?.some((item) => item.definition || item.topics_eng)) {
+      setEnglishPopup(null);
+      setTopicPopup({ keyword, items: hits });
+      return;
+    }
+    const words = lookupEnglishWords(keyword);
+    if (words.length > 0) {
+      setTopicPopup(null);
+      setEnglishPopup({ keyword, words });
+    }
+  };
   const item = getTocItem(params.slug);
   const [mode, setMode] = useState<'read' | 'pdf'>('read');
   const [edition, setEdition] = useState<'easy' | 'summary' | 'roadmap' | 'terms'>('easy');
@@ -353,7 +376,12 @@ export default function Study2DetailPage() {
 
         {showingRoadmap && pack?.roadmap && (
           <div style={{ zoom: fontZoom }}>
-            <RoadmapView roadmap={pack.roadmap} terms={pack.termRoadmap} isDark={isDark} />
+            <RoadmapView
+              roadmap={pack.roadmap}
+              terms={pack.termRoadmap}
+              words={studyWords[params.slug]}
+              isDark={isDark}
+            />
           </div>
         )}
 
@@ -422,7 +450,10 @@ export default function Study2DetailPage() {
                             <button
                               key={keyword}
                               type="button"
-                              onClick={() => focusKeyword(keyword)}
+                              onClick={() => {
+                                focusKeyword(keyword);
+                                openKeywordInfo(keyword);
+                              }}
                               className="rounded-full px-2.5 py-1 text-xs font-bold"
                               style={{
                                 background: selected ? '#d97706' : isDark ? 'rgba(251, 191, 36, 0.18)' : '#fef3c7',
@@ -451,7 +482,7 @@ export default function Study2DetailPage() {
                               className="rounded-xl px-4 py-3 text-sm leading-7"
                               style={{ background: isDark ? 'rgba(245, 158, 11, 0.12)' : '#fffbeb' }}
                             >
-                              <KeywordText text={block.text} keywords={doc.keywords} active={activeKeyword} isDark={isDark} topicIndex={topicIndex} onTopic={(keyword, items) => setTopicPopup({ keyword, items })} />
+                              <KeywordText text={block.text} keywords={doc.keywords} active={activeKeyword} isDark={isDark} topicIndex={topicIndex} onOpen={openKeywordInfo} />
                             </p>
                           );
                         }
@@ -459,13 +490,13 @@ export default function Study2DetailPage() {
                           return (
                             <p key={index} className="pl-1">
                               <span className="mr-2 font-bold text-amber-500">·</span>
-                              <KeywordText text={block.text} keywords={doc.keywords} active={activeKeyword} isDark={isDark} topicIndex={topicIndex} onTopic={(keyword, items) => setTopicPopup({ keyword, items })} />
+                              <KeywordText text={block.text} keywords={doc.keywords} active={activeKeyword} isDark={isDark} topicIndex={topicIndex} onOpen={openKeywordInfo} />
                             </p>
                           );
                         }
                         return (
                           <p key={index}>
-                            <KeywordText text={block.text} keywords={doc.keywords} active={activeKeyword} isDark={isDark} topicIndex={topicIndex} onTopic={(keyword, items) => setTopicPopup({ keyword, items })} />
+                            <KeywordText text={block.text} keywords={doc.keywords} active={activeKeyword} isDark={isDark} topicIndex={topicIndex} onOpen={openKeywordInfo} />
                           </p>
                         );
                       })}
@@ -486,6 +517,14 @@ export default function Study2DetailPage() {
           items={topicPopup.items}
           zoom={fontZoom}
           onClose={() => setTopicPopup(null)}
+        />
+      )}
+      {englishPopup && (
+        <EnglishWordPopup
+          keyword={englishPopup.keyword}
+          words={englishPopup.words}
+          zoom={fontZoom}
+          onClose={() => setEnglishPopup(null)}
         />
       )}
     </div>
