@@ -270,7 +270,7 @@ export function KeywordSpeechBar({ speech }: { speech: ReturnType<typeof useKeyw
 
   return (
     <div
-      className="sticky top-0 z-20 mt-3 flex flex-wrap items-center gap-2 rounded-xl border px-3 py-2 text-[12px]"
+      className="mt-3 flex flex-wrap items-center gap-2 rounded-xl border px-3 py-2 text-[12px]"
       style={{
         background: 'var(--bg-card)',
         borderColor: speech.status === 'playing' ? '#0891b2' : 'var(--border-color)',

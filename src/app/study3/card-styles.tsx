@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Volume2 } from 'lucide-react';
 import type { StudyCard } from './project-cards';
 import { findStudyCard } from './related-lookup';
+import { relatedLevel } from './relation';
 import { getTocItem } from '../study2/toc';
 import { readModes, splitForSpeech, type ReadMode, type SpeechPart } from './speech-text';
 
@@ -18,6 +19,16 @@ function splitTopic(topic: string) {
 }
 
 const spokenMark = { background: '#cffafe', borderRadius: '4px' };
+
+function RelatedMark({ level }: { level: 'up' | 'down' | null }) {
+  if (!level) return null;
+  const up = level === 'up';
+  return (
+    <span title={up ? '상위 개념' : '하위 개념'} style={{ color: up ? '#0e7490' : '#64748b' }}>
+      {up ? '↑' : '↓'}
+    </span>
+  );
+}
 
 function SpokenChunks({ text, activeIndex }: { text: string; activeIndex: number | null }) {
   return splitForSpeech(text).map((chunk, chunkIndex) => (
@@ -79,16 +90,21 @@ function SpeakMenu({ playing, onPick, onOpenChange }: { playing: boolean; onPick
 
 export function ProjectCardSample({
   card,
+  index,
+  total,
   onRelated,
   embedded = false,
   cardId,
+  slug = '',
   speech,
 }: {
   card: StudyCard;
   index: number;
+  total?: number;
   onRelated?: (tag: string) => void;
   embedded?: boolean;
   cardId?: string;
+  slug?: string;
   speech?: {
     playing: boolean;
     activePart: SpeechPart | null;
@@ -131,29 +147,37 @@ export function ProjectCardSample({
           <span className="font-medium" style={speech?.activePart === 'related' && !speech.activeTag ? spokenMark : undefined}>
             연관 단어 :{' '}
           </span>
-          {tags.map((tag) =>
-            onRelated ? (
+          {tags.map((tag) => {
+            const level = relatedLevel(card, tag, slug);
+            const label = level === 'up' ? `${tag}, 상위 개념` : level === 'down' ? `${tag}, 하위 개념` : tag;
+            return onRelated ? (
               <button
                 key={tag}
                 type="button"
+                aria-label={label}
                 onClick={() => onRelated(tag)}
-                className="rounded-full bg-slate-100 px-2 py-0.5 text-[12px] leading-5 text-slate-600 hover:bg-slate-200"
+                className="inline-flex items-center gap-0.5 rounded-full bg-slate-100 px-2 py-0.5 text-[12px] leading-5 text-slate-600 hover:bg-slate-200"
                 style={speech?.activeTag === tag ? { boxShadow: '0 0 0 2px #0891b2' } : undefined}
               >
                 {tag}
+                <RelatedMark level={level} />
               </button>
             ) : (
               <span
                 key={tag}
-                className="rounded-full px-2 py-0.5 text-[12px] leading-5"
+                className="inline-flex items-center gap-0.5 rounded-full px-2 py-0.5 text-[12px] leading-5"
                 style={{ background: '#f1f5f9', color: '#475569', boxShadow: speech?.activeTag === tag ? '0 0 0 2px #0891b2' : undefined }}
               >
                 {tag}
+                <RelatedMark level={level} />
               </span>
-            ),
-          )}
+            );
+          })}
         </p>
       </div>
+      {typeof total === 'number' && (
+        <p className="mt-2 text-right text-[12px] leading-5 text-slate-400">{`${index + 1}/${total}`}</p>
+      )}
     </>
   );
 
@@ -214,7 +238,7 @@ export function RelatedKeywordPopup({
           </button>
         </div>
         {found ? (
-          <ProjectCardSample card={found.card} index={0} onRelated={onTag} embedded />
+          <ProjectCardSample card={found.card} index={0} slug={found.slug} onRelated={onTag} embedded />
         ) : (
           <>
             <h2 className="text-[15px] font-bold leading-6">{tag}</h2>

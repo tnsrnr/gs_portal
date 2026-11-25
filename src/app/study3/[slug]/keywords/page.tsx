@@ -42,7 +42,9 @@ export default function Study3KeywordPage() {
                       key={`${card.topic}-${index}`}
                       card={card}
                       index={index}
+                      total={cards.length}
                       cardId={`study3-card-${index}`}
+                      slug={params.slug}
                       onRelated={setRelatedTag}
                       speech={
                         speech.ready && speech.supported
