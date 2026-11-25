@@ -1,9 +1,11 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { Volume2 } from 'lucide-react';
 import type { StudyCard } from './project-cards';
 import { findStudyCard } from './related-lookup';
 import { getTocItem } from '../study2/toc';
+import { readModes, splitForSpeech, type ReadMode, type SpeechPart } from './speech-text';
 
 function splitTopic(topic: string) {
   if (!topic.endsWith(')')) return { head: topic, tail: '' };
@@ -15,35 +17,120 @@ function splitTopic(topic: string) {
   };
 }
 
+const spokenMark = { background: '#cffafe', borderRadius: '4px' };
+
+function SpokenChunks({ text, activeIndex }: { text: string; activeIndex: number | null }) {
+  return splitForSpeech(text).map((chunk, chunkIndex) => (
+    <span key={chunkIndex} style={activeIndex === chunkIndex ? spokenMark : undefined}>
+      {chunk}
+    </span>
+  ));
+}
+
+function SpeakMenu({ playing, onPick, onOpenChange }: { playing: boolean; onPick: (mode: ReadMode) => void; onOpenChange?: (open: boolean) => void }) {
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const setMenu = (next: boolean) => {
+    setOpen(next);
+    onOpenChange?.(next);
+  };
+
+  useEffect(() => {
+    if (!open) return;
+    const close = (event: PointerEvent) => {
+      if (!rootRef.current?.contains(event.target as Node)) setMenu(false);
+    };
+    document.addEventListener('pointerdown', close);
+    return () => document.removeEventListener('pointerdown', close);
+  }, [open]);
+
+  return (
+    <div ref={rootRef} className="relative shrink-0">
+      <button
+        type="button"
+        aria-label="음성으로 읽기"
+        aria-expanded={open}
+        onClick={() => setMenu(!open)}
+        className="inline-flex h-7 w-7 items-center justify-center rounded-full border"
+        style={{ borderColor: playing ? '#0891b2' : '#e5e7eb', color: playing ? '#0891b2' : '#64748b', background: '#ffffff' }}
+      >
+        <Volume2 className="h-3.5 w-3.5" />
+      </button>
+      {open && (
+        <div className="absolute right-0 z-30 mt-1 w-28 rounded-lg border bg-white py-1 shadow-md" style={{ borderColor: '#e5e7eb' }}>
+          {readModes.map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              className="block w-full px-2 py-1 text-left text-[12px] text-slate-700 hover:bg-slate-100"
+              onClick={() => {
+                setMenu(false);
+                onPick(item.id);
+              }}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function ProjectCardSample({
   card,
   onRelated,
   embedded = false,
+  cardId,
+  speech,
 }: {
   card: StudyCard;
   index: number;
   onRelated?: (tag: string) => void;
   embedded?: boolean;
+  cardId?: string;
+  speech?: {
+    playing: boolean;
+    activePart: SpeechPart | null;
+    chunkIndex: number | null;
+    activeTag: string | null;
+    onPick: (mode: ReadMode) => void;
+  };
 }) {
   const { head, tail } = splitTopic(card.topic);
   const tags = card.related.split(',').map((item) => item.trim()).filter(Boolean);
+  const [menuOpen, setMenuOpen] = useState(false);
   const body = (
     <>
-      <h2 className="text-[15px] font-bold leading-6">
-        {head}
-        {tail && <span className="font-normal"> ({tail})</span>}
-      </h2>
+      <div className="flex items-start justify-between gap-2">
+        <h2 className="text-[15px] font-bold leading-6" style={speech?.activePart === 'title' ? spokenMark : undefined}>
+          {head}
+          {tail && <span className="font-normal"> ({tail})</span>}
+        </h2>
+        {speech && (
+          <SpeakMenu
+            playing={speech.playing}
+            onOpenChange={setMenuOpen}
+            onPick={(mode) => {
+              setMenuOpen(false);
+              speech.onPick(mode);
+            }}
+          />
+        )}
+      </div>
       <div className="mt-3 space-y-2 text-[13px] leading-6">
         <p>
           <span className="font-medium">정의 : </span>
-          {card.definition}
+          <SpokenChunks text={card.definition} activeIndex={speech?.activePart === 'definition' ? speech.chunkIndex : null} />
         </p>
         <p>
           <span className="font-medium">필요성 : </span>
-          {card.why}
+          <SpokenChunks text={card.why} activeIndex={speech?.activePart === 'why' ? speech.chunkIndex : null} />
         </p>
         <p className="flex flex-wrap items-center gap-1.5">
-          <span className="font-medium">연관 단어 : </span>
+          <span className="font-medium" style={speech?.activePart === 'related' && !speech.activeTag ? spokenMark : undefined}>
+            연관 단어 :{' '}
+          </span>
           {tags.map((tag) =>
             onRelated ? (
               <button
@@ -51,11 +138,16 @@ export function ProjectCardSample({
                 type="button"
                 onClick={() => onRelated(tag)}
                 className="rounded-full bg-slate-100 px-2 py-0.5 text-[12px] leading-5 text-slate-600 hover:bg-slate-200"
+                style={speech?.activeTag === tag ? { boxShadow: '0 0 0 2px #0891b2' } : undefined}
               >
                 {tag}
               </button>
             ) : (
-              <span key={tag} className="rounded-full px-2 py-0.5 text-[12px] leading-5" style={{ background: '#f1f5f9', color: '#475569' }}>
+              <span
+                key={tag}
+                className="rounded-full px-2 py-0.5 text-[12px] leading-5"
+                style={{ background: '#f1f5f9', color: '#475569', boxShadow: speech?.activeTag === tag ? '0 0 0 2px #0891b2' : undefined }}
+              >
                 {tag}
               </span>
             ),
@@ -69,8 +161,13 @@ export function ProjectCardSample({
 
   return (
     <article
-      className="rounded-lg border px-4 py-3.5 shadow-sm"
-      style={{ background: '#ffffff', borderColor: '#e5e7eb', color: '#1e293b' }}
+      id={cardId}
+      className={`scroll-mt-24 rounded-lg border px-4 py-3.5 shadow-sm ${menuOpen ? 'relative z-20' : 'relative'}`}
+      style={{
+        background: '#ffffff',
+        borderColor: speech?.playing ? '#0891b2' : '#e5e7eb',
+        color: '#1e293b',
+      }}
     >
       {body}
     </article>

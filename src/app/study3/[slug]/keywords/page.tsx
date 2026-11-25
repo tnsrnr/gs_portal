@@ -7,12 +7,14 @@ import { study3Keywords } from '../../keywords';
 import { ProjectCardSample, RelatedKeywordPopup } from '../../card-styles';
 import { study3Cards } from '../../cards';
 import { Study3ChapterHeader } from '../../chapter-header';
+import { KeywordSpeechBar, useKeywordSpeech } from '../../keyword-speech';
 
 export default function Study3KeywordPage() {
   const params = useParams<{ slug: string }>();
   const item = getTocItem(params.slug);
   const keywords = study3Keywords[params.slug] ?? [];
   const cards = study3Cards[params.slug] ?? null;
+  const speech = useKeywordSpeech(cards ?? []);
   const [relatedTag, setRelatedTag] = useState<string | null>(null);
 
   return (
@@ -32,11 +34,38 @@ export default function Study3KeywordPage() {
               {(cards ? cards.length : keywords.length)}개.
             </p>
             {cards ? (
-              <div className="mt-3 flex flex-col gap-3">
-                {cards.map((card, index) => (
-                  <ProjectCardSample key={`${card.topic}-${index}`} card={card} index={index} onRelated={setRelatedTag} />
-                ))}
-              </div>
+              <>
+                <KeywordSpeechBar speech={speech} />
+                <div className="relative mt-3 flex flex-col gap-3">
+                  {cards.map((card, index) => (
+                    <ProjectCardSample
+                      key={`${card.topic}-${index}`}
+                      card={card}
+                      index={index}
+                      cardId={`study3-card-${index}`}
+                      onRelated={setRelatedTag}
+                      speech={
+                        speech.ready && speech.supported
+                          ? {
+                              playing: speech.active?.index === index && speech.status !== 'idle',
+                              activePart: speech.active?.index === index ? speech.active.part : null,
+                              chunkIndex: speech.active?.index === index ? speech.active.chunkIndex : null,
+                              activeTag: speech.active?.index === index ? speech.active.tag ?? null : null,
+                              onPick: (mode) => speech.play(index, mode),
+                            }
+                          : undefined
+                      }
+                    />
+                  ))}
+                  {speech.cover && (
+                    <div className="absolute inset-0 z-10" style={{ background: 'var(--bg-card)' }}>
+                      <p className="sticky top-24 text-center text-sm" style={{ color: 'var(--text-secondary)' }}>
+                        화면을 가리고 있습니다.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </>
             ) : keywords.length === 0 ? (
               <p className="mt-6 text-sm" style={{ color: 'var(--text-secondary)' }}>
                 이 목차에 정리된 키워드가 없습니다.
