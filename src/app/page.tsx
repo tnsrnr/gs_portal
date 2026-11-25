@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Edit3, Eye, BookOpen, GraduationCap, ArrowRight, type LucideIcon } from 'lucide-react';
+import { Edit3, Eye, BookOpen, GraduationCap, Library, ArrowRight, type LucideIcon } from 'lucide-react';
 
 interface HomeCard {
   title: string;
@@ -55,6 +55,16 @@ const cards: HomeCard[] = [
     accent: '#f59e0b',
     glow: 'rgba(245, 158, 11, 0.85)',
     wash: 'rgba(245, 158, 11, 0.16)',
+  },
+  {
+    title: '학습 3',
+    subtitle: '키워드 목차',
+    description: '목차별 키워드를 고르고, 단어 카드로 학습할 준비를 합니다.',
+    href: '/study3',
+    icon: Library,
+    accent: '#0891b2',
+    glow: 'rgba(8, 145, 178, 0.85)',
+    wash: 'rgba(8, 145, 178, 0.16)',
   },
 ];
 

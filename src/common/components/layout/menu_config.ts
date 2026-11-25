@@ -3,6 +3,7 @@ import {
   Eye,
   BookOpen,
   GraduationCap,
+  Library,
   BarChart3
 } from "lucide-react";
 import type { LucideIcon } from 'lucide-react';
@@ -47,6 +48,12 @@ export const menuItems: MenuItem[] = [
     path: '/study2', 
     icon: GraduationCap,
     description: '목차 학습'
+  },
+  { 
+    name: '학습 3', 
+    path: '/study3', 
+    icon: Library,
+    description: '키워드 목차'
   },
   { 
     name: '통계', 

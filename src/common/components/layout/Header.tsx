@@ -47,6 +47,12 @@ function MenuItem({ menu, pathname }: {
         hover: 'rgba(245, 158, 11, 0.15)',
         gradient: 'linear-gradient(135deg, rgba(245, 158, 11, 0.08) 0%, rgba(245, 158, 11, 0.12) 100%)'
       };
+      case '학습 3': return {
+        primary: '#0891b2',
+        secondary: 'rgba(8, 145, 178, 0.1)',
+        hover: 'rgba(8, 145, 178, 0.15)',
+        gradient: 'linear-gradient(135deg, rgba(8, 145, 178, 0.08) 0%, rgba(8, 145, 178, 0.12) 100%)'
+      };
       case '통계': return {
         primary: '#f97316', // orange
         secondary: 'rgba(249, 115, 22, 0.1)',
