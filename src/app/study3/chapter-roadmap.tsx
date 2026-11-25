@@ -37,8 +37,8 @@ function Box({ box }: { box: RoadBox }) {
 }
 
 function Sheet({ sheet }: { sheet: RoadSheet }) {
-  const stageCols = (sheet.stages?.length ?? 0) >= 5 ? 'sm:grid-cols-2 lg:grid-cols-3' : 'sm:grid-cols-2 lg:grid-cols-4';
-  const groupCols = 'sm:grid-cols-2 lg:grid-cols-4';
+  const stageCols = 'sm:grid-cols-2 lg:grid-cols-3';
+  const groupCols = 'sm:grid-cols-2 lg:grid-cols-3';
 
   return (
     <section className="rounded-lg border px-3 py-3 shadow-sm" style={{ background: '#ffffff', borderColor: '#e5e7eb', color: '#1e293b' }}>

@@ -10,7 +10,7 @@ export default function Study3IndexPage() {
 
   return (
     <div className="h-full overflow-y-auto" style={{ background: 'var(--bg-primary)' }}>
-      <div className="mx-auto flex min-h-full w-full max-w-3xl flex-col px-4 py-8">
+      <div className="mx-auto flex min-h-full w-full max-w-xl flex-col px-4 py-8">
         <button
           type="button"
           onClick={() => router.push('/')}
@@ -34,38 +34,25 @@ export default function Study3IndexPage() {
               학습 목차
             </h1>
             <p className="mt-1 text-sm" style={{ color: 'var(--text-secondary)' }}>
-              로드맵과 키워드를 따로 엽니다.
+              목차를 누르면 로드맵이 열립니다.
             </p>
           </div>
           <ul>
             {studyToc.map((item) => {
               const count = study3Keywords[item.slug]?.length ?? 0;
               return (
-                <li
-                  key={item.slug}
-                  className="flex flex-wrap items-center gap-2 border-b px-5 py-3 last:border-b-0"
-                  style={{ borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}
-                >
-                  <Folder className="h-5 w-5 shrink-0 text-cyan-600" fill="currentColor" />
-                  <span className="min-w-0 flex-1 text-[15px]">{item.label}</span>
-                  <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-                    {count}개
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => router.push(`/study3/${item.slug}/roadmap`)}
-                    className="rounded-full border px-3 py-1.5 text-sm font-medium text-cyan-700"
-                    style={{ borderColor: 'var(--border-color)' }}
-                  >
-                    로드맵
-                  </button>
+                <li key={item.slug}>
                   <button
                     type="button"
                     onClick={() => router.push(`/study3/${item.slug}`)}
-                    className="rounded-full border px-3 py-1.5 text-sm font-medium text-cyan-700"
-                    style={{ borderColor: 'var(--border-color)' }}
+                    className="flex w-full items-center gap-3 border-b px-5 py-3 text-left transition-colors last:border-b-0 hover:bg-black/5"
+                    style={{ borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}
                   >
-                    키워드
+                    <Folder className="h-5 w-5 shrink-0 text-cyan-600" fill="currentColor" />
+                    <span className="min-w-0 flex-1 text-[15px]">{item.label}</span>
+                    <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                      {`${count}개`}
+                    </span>
                   </button>
                 </li>
               );

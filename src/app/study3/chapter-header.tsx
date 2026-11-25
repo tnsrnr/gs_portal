@@ -31,7 +31,7 @@ export function Study3ChapterHeader({ slug, mode }: { slug: string; mode: 'keywo
           <div className="flex rounded-full border p-1" style={{ borderColor: 'var(--border-color)' }}>
             <button
               type="button"
-              onClick={() => router.push(`/study3/${slug}/roadmap`)}
+              onClick={() => router.push(`/study3/${slug}`)}
               className="rounded-full px-3 py-1.5 text-sm font-medium"
               style={{
                 background: mode === 'roadmap' ? '#0891b2' : 'transparent',
@@ -42,7 +42,7 @@ export function Study3ChapterHeader({ slug, mode }: { slug: string; mode: 'keywo
             </button>
             <button
               type="button"
-              onClick={() => router.push(`/study3/${slug}`)}
+              onClick={() => router.push(`/study3/${slug}/keywords`)}
               className="rounded-full px-3 py-1.5 text-sm font-medium"
               style={{
                 background: mode === 'keywords' ? '#0891b2' : 'transparent',
