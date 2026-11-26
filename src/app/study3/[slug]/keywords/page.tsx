@@ -59,13 +59,6 @@ export default function Study3KeywordPage() {
                       }
                     />
                   ))}
-                  {speech.cover && (
-                    <div className="absolute inset-0 z-10" style={{ background: 'var(--bg-card)' }}>
-                      <p className="sticky top-24 text-center text-sm" style={{ color: 'var(--text-secondary)' }}>
-                        화면을 가리고 있습니다.
-                      </p>
-                    </div>
-                  )}
                 </div>
               </>
             ) : keywords.length === 0 ? (

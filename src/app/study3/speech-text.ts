@@ -47,9 +47,7 @@ function topicSpeech(topic: string) {
   if (!topic.endsWith(')')) return topic;
   const open = topic.lastIndexOf('(');
   if (open <= 0) return topic;
-  const head = topic.slice(0, open).trim();
-  const tail = topic.slice(open + 1, -1).replace(/\s*:\s*/g, ': ').trim();
-  return tail ? `${head}. ${tail}` : head;
+  return topic.slice(0, open).trim();
 }
 
 export type SpeechSegment = {
@@ -70,7 +68,7 @@ export function buildSegments(card: StudyCard, mode: ReadMode): SpeechSegment[] 
   }
   if (parts.includes('definition') && card.definition.trim()) {
     splitForSpeech(card.definition.trim()).forEach((text, chunkIndex) => {
-      segments.push({ part: 'definition', text: chunkIndex === 0 ? `정의. ${text}` : text, chunkIndex });
+      segments.push({ part: 'definition', text, chunkIndex });
     });
   }
   if (parts.includes('why') && card.why.trim()) {

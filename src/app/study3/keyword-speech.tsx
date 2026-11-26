@@ -22,8 +22,6 @@ export function useKeywordSpeech(cards: StudyCard[]) {
   cardsRef.current = cards;
   const rateRef = useRef(1);
   const voiceRef = useRef<SpeechSynthesisVoice | null>(null);
-  const repeatRef = useRef(false);
-  const autoNextRef = useRef(false);
   const modeRef = useRef<ReadMode>('all');
   const queueRef = useRef<ReturnType<typeof buildSegments>>([]);
   const cardIndexRef = useRef(0);
@@ -43,9 +41,6 @@ export function useKeywordSpeech(cards: StudyCard[]) {
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
   const [voiceURI, setVoiceURI] = useState('');
   const [koreanMissing, setKoreanMissing] = useState(false);
-  const [cover, setCover] = useState(false);
-  const [autoNext, setAutoNextState] = useState(false);
-  const [repeat, setRepeatState] = useState(false);
 
   const stop = () => {
     tokenRef.current += 1;
@@ -81,20 +76,10 @@ export function useKeywordSpeech(cards: StudyCard[]) {
 
     const finish = () => {
       if (token !== tokenRef.current) return;
-      if (repeatRef.current && !autoNextRef.current) {
-        playRef.current(cardIndexRef.current, modeRef.current);
+      const next = cardIndexRef.current + 1;
+      if (next < cardsRef.current.length) {
+        playRef.current(next, modeRef.current);
         return;
-      }
-      if (autoNextRef.current) {
-        const next = cardIndexRef.current + 1;
-        if (next < cardsRef.current.length) {
-          playRef.current(next, modeRef.current);
-          return;
-        }
-        if (repeatRef.current) {
-          playRef.current(0, modeRef.current);
-          return;
-        }
       }
       setStatus('idle');
       setActive(null);
@@ -220,14 +205,6 @@ export function useKeywordSpeech(cards: StudyCard[]) {
     voiceRef.current = voice;
     setVoiceURI(uri);
   };
-  const setAutoNext = (next: boolean) => {
-    autoNextRef.current = next;
-    setAutoNextState(next);
-  };
-  const setRepeat = (next: boolean) => {
-    repeatRef.current = next;
-    setRepeatState(next);
-  };
 
   const position = active ? `${active.index + 1}/${cards.length} · ${partLabel[active.part]}` : `0/${cards.length}`;
 
@@ -244,12 +221,6 @@ export function useKeywordSpeech(cards: StudyCard[]) {
     voiceURI,
     setVoice,
     koreanMissing,
-    cover,
-    setCover,
-    autoNext,
-    setAutoNext,
-    repeat,
-    setRepeat,
     position,
     play,
     pause,
@@ -330,33 +301,6 @@ export function KeywordSpeechBar({ speech }: { speech: ReturnType<typeof useKeyw
               </select>
             </label>
           )}
-          <button
-            type="button"
-            aria-pressed={speech.cover}
-            className="rounded-full border px-2.5 py-1"
-            style={{ ...buttonStyle, background: speech.cover ? '#0891b2' : buttonStyle.background, color: speech.cover ? '#ffffff' : buttonStyle.color }}
-            onClick={() => speech.setCover(!speech.cover)}
-          >
-            화면 가리기
-          </button>
-          <button
-            type="button"
-            aria-pressed={speech.autoNext}
-            className="rounded-full border px-2.5 py-1"
-            style={{ ...buttonStyle, background: speech.autoNext ? '#0891b2' : buttonStyle.background, color: speech.autoNext ? '#ffffff' : buttonStyle.color }}
-            onClick={() => speech.setAutoNext(!speech.autoNext)}
-          >
-            다음 토픽
-          </button>
-          <button
-            type="button"
-            aria-pressed={speech.repeat}
-            className="rounded-full border px-2.5 py-1"
-            style={{ ...buttonStyle, background: speech.repeat ? '#0891b2' : buttonStyle.background, color: speech.repeat ? '#ffffff' : buttonStyle.color }}
-            onClick={() => speech.setRepeat(!speech.repeat)}
-          >
-            반복
-          </button>
           <label className="inline-flex items-center gap-1" style={{ color: 'var(--text-secondary)' }}>
             범위
             <select

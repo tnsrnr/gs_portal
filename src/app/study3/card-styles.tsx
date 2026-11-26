@@ -173,11 +173,11 @@ export function ProjectCardSample({
               </span>
             );
           })}
+          {typeof total === 'number' && (
+            <span className="ml-auto shrink-0 pl-2 text-[12px] leading-5 text-slate-400">{`${index + 1}/${total}`}</span>
+          )}
         </p>
       </div>
-      {typeof total === 'number' && (
-        <p className="mt-2 text-right text-[12px] leading-5 text-slate-400">{`${index + 1}/${total}`}</p>
-      )}
     </>
   );
 
